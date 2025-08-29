@@ -31,6 +31,7 @@ interface ILPOFormValues {
         unitPrice: number
     }[]
     documents: File[]
+    existingDocuments?: any[] // Add this for existing documents
 }
 
 type LpoFormProps = {
@@ -56,84 +57,134 @@ const validationSchema = Yup.object().shape({
                 .min(0, 'Unit price cannot be negative'),
         })
     ).min(1, 'At least one item is required'),
-    documents: Yup.array()
-        .min(1, 'At least one document is required')
-        .required('Documents are required'),
 })
 
 const LpoForm = forwardRef<FormikRef, LpoFormProps>((props, ref) => {
-    const { projectId } = useParams()
+    const { projectId, lpoId } = useParams()
     const navigate = useNavigate()
     const userId = useAppSelector((state) => state.auth.user?.id)
     const [deleteConfirm, setDeleteConfirm] = useState(false)
-    const { type="new", initialData, onDiscard } = props
-    useEffect(()=>{
-        if (!projectId|| projectId.length===0) {
+    const { type = "new", initialData, onDiscard } = props
+    const [isLoading, setIsLoading] = useState(type === 'edit')
+    const [formInitialValues, setFormInitialValues] = useState<ILPOFormValues>({
+        id: '',
+        projectId: projectId || '',
+        lpoNumber: '',
+        lpoDate: '',
+        supplier: '',
+        items: [{ description: '', quantity: 0, unitPrice: 0 }],
+        documents: [],
+        existingDocuments: []
+    })
+
+    useEffect(() => {
+        if (!projectId || projectId.length === 0) {
             navigate("/")
         }
-    },[])
-    const newId = useUniqueId('lpo-')
+    }, [])
+
+    useEffect(() => {
+        // const fetchLpoData = async () => {
+        //     if (type === 'edit' && lpoId) {
+        //         try {
+        //             const response = await getLPODetails(lpoId)
+        //             const lpoData = response.data
+                    
+        //             setFormInitialValues({
+        //                 id: lpoData._id,
+        //                 projectId: lpoData.project._id,
+        //                 lpoNumber: lpoData.lpoNumber,
+        //                 lpoDate: new Date(lpoData.lpoDate).toISOString().split('T')[0],
+        //                 supplier: lpoData.supplier,
+        //                 items: lpoData.items.map((item: any) => ({
+        //                     description: item.description,
+        //                     quantity: item.quantity,
+        //                     unitPrice: item.unitPrice
+        //                 })),
+        //                 documents: [],
+        //                 existingDocuments: lpoData.documents
+        //             })
+        //         } catch (error) {
+        //             console.error('Error fetching LPO data:', error)
+        //             toast.push(
+        //                 <Notification title="Failed to load LPO data" type="danger" />,
+        //                 { placement: 'top-center' }
+        //             )
+        //             navigate(`/app/project-view/${projectId}`)
+        //         } finally {
+        //             setIsLoading(false)
+        //         }
+        //     }
+        // }
+
+        // fetchLpoData()
+    }, [type, lpoId, projectId, navigate])
 
     const handleSubmit = async (
         values: ILPOFormValues,
         setSubmitting: (isSubmitting: boolean) => void
-      ) => {
+    ) => {
         setSubmitting(true);
         try {
-          const formData = new FormData();
-          formData.append('projectId', values.projectId);
-          formData.append('lpoNumber', values.lpoNumber);
-          formData.append('lpoDate', values.lpoDate);
-          formData.append('supplier', values.supplier);
-          
-          // Stringify items array
-          formData.append('items', JSON.stringify(values.items));
-          
-          // Append each file
-          values.documents.forEach(file => {
-            formData.append('documents', file);
-          });
-      
-          let response;
-          if (type === 'new') {
-            response = await createLPO(formData);
-            toast.push(
-              <Notification title="LPO created successfully" type="success" />,
-              { placement: 'top-center' }
-            );
-          } else {
-            response = await updateLPO(values.id as string, formData);
-            toast.push(
-              <Notification title="LPO updated successfully" type="success" />,
-              { placement: 'top-center' }
-            );
-          }
-      
-          navigate(`/app/project-view/${projectId}`);
+            const formData = new FormData();
+            formData.append('projectId', values.projectId);
+            formData.append('lpoNumber', values.lpoNumber);
+            formData.append('lpoDate', values.lpoDate);
+            formData.append('supplier', values.supplier);
+            
+            // Stringify items array
+            formData.append('items', JSON.stringify(values.items));
+            
+            // Append each file
+            values.documents.forEach(file => {
+                formData.append('documents', file);
+            });
+
+            // Append existing document URLs for edit
+            if (type === 'edit' && values.existingDocuments) {
+                formData.append('existingDocuments', JSON.stringify(values.existingDocuments));
+            }
+
+            let response;
+            if (type === 'new') {
+                response = await createLPO(formData);
+                toast.push(
+                    <Notification title="LPO created successfully" type="success" />,
+                    { placement: 'top-center' }
+                );
+            } else {
+                response = await updateLPO(values.id as string, formData);
+                toast.push(
+                    <Notification title="LPO updated successfully" type="success" />,
+                    { placement: 'top-center' }
+                );
+            }
+
+            navigate(`/app/project-view/${projectId}`);
         } catch (error) {
-          console.error('Error submitting LPO:', error);
-          toast.push(
-            <Notification 
-              title="Failed to save LPO" 
-              type="danger" 
-            />,
-            { placement: 'top-center' }
-          );
+            console.error('Error submitting LPO:', error);
+            toast.push(
+                <Notification 
+                    title="Failed to save LPO" 
+                    type="danger" 
+                />,
+                { placement: 'top-center' }
+            );
         } finally {
-          setSubmitting(false);
+            setSubmitting(false);
         }
-      };
+    };
 
     const handleDelete = async () => {
         try {
-            if (!initialData?.id) return
+            if (!formInitialValues?.id) return
             
-            await deleteLPO(initialData.id)
+            await deleteLPO(formInitialValues.id)
             toast.push(
                 <Notification title="LPO deleted successfully" type="success" />,
                 { placement: 'top-center' }
             )
-            navigate(`/projects/${projectId}/lpos`)
+            navigate(`/app/project-view/${projectId}`)
         } catch (error) {
             toast.push(
                 <Notification title="Failed to delete LPO" type="danger" />,
@@ -142,31 +193,34 @@ const LpoForm = forwardRef<FormikRef, LpoFormProps>((props, ref) => {
         }
     }
 
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        )
+    }
+
     return (
         <>
             <Formik
                 innerRef={ref}
-                initialValues={{
-                    id: initialData?.id || '',
-                    projectId: initialData?.projectId || projectId || '',
-                    lpoNumber: initialData?.lpoNumber || '',
-                    lpoDate: initialData?.lpoDate || '',
-                    supplier: initialData?.supplier || '',
-                    items: initialData?.items || [{ description: '', quantity: 0, unitPrice: 0 }],
-                    documents: initialData?.documents || [],
-                }}
+                initialValues={formInitialValues}
                 validationSchema={validationSchema}
                 onSubmit={(values: ILPOFormValues, { setSubmitting }) => {
                     handleSubmit(values, setSubmitting)
                 }}
+                enableReinitialize
             >
-                {({ values, touched, errors, isSubmitting }) => (
+                {({ values, touched, errors, isSubmitting, setFieldValue }) => (
                     <Form>
                         <FormContainer>
                             <LpoFormFields
                                 touched={touched}
                                 errors={errors}
                                 values={values}
+                                setFieldValue={setFieldValue}
+                                type={type}
                             />
                             <StickyFooter
                                 className="-mx-8 px-8 flex items-center justify-between py-4"

@@ -15,6 +15,7 @@ type FormFieldsName = {
     lpoDate: string
     supplier: string
     documents: File[]
+    existingDocuments?: any[]
     items: {
         description: string
         quantity: number
@@ -26,10 +27,12 @@ type LpoFormFieldsProps = {
     touched: FormikTouched<FormFieldsName>
     errors: FormikErrors<FormFieldsName>
     values: FormFieldsName
+    setFieldValue: any
+    type: 'edit' | 'new'
 }
 
 const LpoFormFields = (props: LpoFormFieldsProps) => {
-    const { touched, errors, values } = props
+    const { touched, errors, values, setFieldValue, type } = props
     const [filePreviews, setFilePreviews] = useState<string[]>([])
 
     const beforeUpload = (file: FileList | null) => {
@@ -61,32 +64,34 @@ const LpoFormFields = (props: LpoFormFieldsProps) => {
     }
 
     const onFileChange = (
-        form: any,
-        field: any,
-        files: File[],
-        setFieldValue: any
+        files: File[]
     ) => {
         if (files.length > 0) {
-            setFieldValue(field.name, files)
-            setFilePreviews(files.map(file => URL.createObjectURL(file)))
+            setFieldValue('documents', [...values.documents, ...files])
+            setFilePreviews(prev => [...prev, ...files.map(file => URL.createObjectURL(file))])
         }
     }
 
     const removeFile = (
         index: number,
-        values: FormFieldsName,
-        setFieldValue: any
+        isExisting: boolean = false
     ) => {
-        const newFiles = [...values.documents]
-        newFiles.splice(index, 1)
-        setFieldValue('documents', newFiles)
-        
-        const newPreviews = [...filePreviews]
-        newPreviews.splice(index, 1)
-        setFilePreviews(newPreviews)
+        if (isExisting) {
+            const newExistingFiles = [...(values.existingDocuments || [])]
+            newExistingFiles.splice(index, 1)
+            setFieldValue('existingDocuments', newExistingFiles)
+        } else {
+            const newFiles = [...values.documents]
+            newFiles.splice(index, 1)
+            setFieldValue('documents', newFiles)
+            
+            const newPreviews = [...filePreviews]
+            newPreviews.splice(index, 1)
+            setFilePreviews(newPreviews)
+        }
     }
 
-    const addItem = (values: FormFieldsName, setFieldValue: any) => {
+    const addItem = () => {
         const newItems = [
             ...values.items,
             { description: '', quantity: 0, unitPrice: 0 }
@@ -95,12 +100,16 @@ const LpoFormFields = (props: LpoFormFieldsProps) => {
     }
 
     const removeItem = (
-        index: number,
-        values: FormFieldsName,
-        setFieldValue: any
+        index: number
     ) => {
         const newItems = [...values.items]
         newItems.splice(index, 1)
+        setFieldValue('items', newItems)
+    }
+
+    const updateItem = (index: number, field: string, value: any) => {
+        const newItems = [...values.items]
+        newItems[index] = { ...newItems[index], [field]: value }
         setFieldValue('items', newItems)
     }
 
@@ -134,7 +143,7 @@ const LpoFormFields = (props: LpoFormFieldsProps) => {
                     {({ field, form }: FieldProps) => (
                         <DatePicker
                             placeholder="Select date"
-                            {...field}
+                            value={field.value}
                             onChange={(date) => {
                                 form.setFieldValue(field.name, date)
                             }}
@@ -164,71 +173,90 @@ const LpoFormFields = (props: LpoFormFieldsProps) => {
                 invalid={(errors.documents && touched.documents) as boolean}
                 errorMessage={errors.documents as string}
             >
-                <Field name="documents">
-                    {({ field, form }: FieldProps) => (
-                        <div>
-                            <Upload
-                                beforeUpload={beforeUpload}
-                                showList={false}
-                                multiple
-                                onChange={(files) =>
-                                    onFileChange(
-                                        form,
-                                        field,
-                                        files,
-                                        form.setFieldValue
-                                    )
-                                }
-                            >
-                                <div className="my-4 text-center">
-                                    <DoubleSidedImage
-                                        className="mx-auto"
-                                        src="/img/others/upload.png"
-                                        darkModeSrc="/img/others/upload-dark.png"
-                                    />
-                                    <p className="font-semibold">
-                                        <span className="text-gray-800 dark:text-white">
-                                            Drop your files here, or{' '}
-                                        </span>
-                                        <span className="text-blue-500">
-                                            browse
-                                        </span>
-                                    </p>
-                                    <p className="mt-1 opacity-60 dark:text-white">
-                                        Support: PDF, Excel, JPEG, PNG (Max 10MB each)
-                                    </p>
-                                </div>
-                            </Upload>
-                            {values.documents.length > 0 && (
-                                <div className="mt-4 space-y-2">
-                                    {values.documents.map((file, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center justify-between p-2 border rounded"
+                <div>
+                    <Upload
+                        beforeUpload={beforeUpload}
+                        showList={false}
+                        multiple
+                        onChange={onFileChange}
+                    >
+                        <div className="my-4 text-center">
+                            <DoubleSidedImage
+                                className="mx-auto"
+                                src="/img/others/upload.png"
+                                darkModeSrc="/img/others/upload-dark.png"
+                            />
+                            <p className="font-semibold">
+                                <span className="text-gray-800 dark:text-white">
+                                    Drop your files here, or{' '}
+                                </span>
+                                <span className="text-blue-500">
+                                    browse
+                                </span>
+                            </p>
+                            <p className="mt-1 opacity-60 dark:text-white">
+                                Support: PDF, Excel, JPEG, PNG (Max 10MB each)
+                            </p>
+                        </div>
+                    </Upload>
+                    
+                    {/* Existing Documents */}
+                    {values.existingDocuments && values.existingDocuments.length > 0 && (
+                        <div className="mt-4">
+                            <h6 className="text-sm font-semibold mb-2">Existing Documents</h6>
+                            <div className="space-y-2">
+                                {values.existingDocuments.map((doc: any, index: number) => (
+                                    <div
+                                        key={`existing-${index}`}
+                                        className="flex items-center justify-between p-2 border rounded"
+                                    >
+                                        <a
+                                            href={doc.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-500 hover:underline truncate"
                                         >
-                                            <span className="truncate">
-                                                {file.name}
-                                            </span>
-                                            <Button
-                                                icon={<HiOutlineTrash />}
-                                                variant="plain"
-                                                size="xs"
-                                                type="button"
-                                                onClick={() =>
-                                                    removeFile(
-                                                        index,
-                                                        values,
-                                                        form.setFieldValue
-                                                    )
-                                                }
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                            {doc.name}
+                                        </a>
+                                        <Button
+                                            icon={<HiOutlineTrash />}
+                                            variant="plain"
+                                            size="xs"
+                                            type="button"
+                                            onClick={() => removeFile(index, true)}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
-                </Field>
+
+                    {/* New Documents */}
+                    {values.documents.length > 0 && (
+                        <div className="mt-4">
+                            <h6 className="text-sm font-semibold mb-2">New Documents</h6>
+                            <div className="space-y-2">
+                                {values.documents.map((file, index) => (
+                                    <div
+                                        key={`new-${index}`}
+                                        className="flex items-center justify-between p-2 border rounded"
+                                    >
+                                        <span className="truncate">
+                                            {file.name}
+                                        </span>
+                                        <Button
+                                            icon={<HiOutlineTrash />}
+                                            variant="plain"
+                                            size="xs"
+                                            type="button"
+                                            onClick={() => removeFile(index)}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </FormItem>
 
             {/* Items Field */}
@@ -237,125 +265,86 @@ const LpoFormFields = (props: LpoFormFieldsProps) => {
                 invalid={(errors.items && touched.items) as boolean}
                 errorMessage={errors.items as string}
             >
-                <Field name="items">
-                    {({ field, form }: FieldProps) => (
-                        <div className="space-y-4">
-                            {values.items.map((item, index) => (
-                                <div
-                                    key={index}
-                                    className="grid grid-cols-12 gap-4 items-end border p-4 rounded-lg"
+                <div className="space-y-4">
+                    {values.items.map((item, index) => (
+                        <div
+                            key={index}
+                            className="grid grid-cols-12 gap-4 items-end border p-4 rounded-lg"
+                        >
+                            <div className="col-span-5">
+                                <FormItem
+                                    label={`Item ${index + 1} - Description`}
+                                    className="mb-0"
+                                    invalid={errors.items?.[index]?.description && touched.items?.[index]?.description}
+                                    errorMessage={errors.items?.[index]?.description}
                                 >
-                                    <div className="col-span-5">
-                                        <FormItem
-                                            label={`Item ${index + 1} - Description`}
-                                            className="mb-0"
-                                        >
-                                            <Input
-                                                type="text"
-                                                autoComplete="off"
-                                                name={`items.${index}.description`}
-                                                placeholder="Item description"
-                                                value={item.description}
-                                                onChange={(e) => {
-                                                    const newItems = [
-                                                        ...values.items,
-                                                    ]
-                                                    newItems[index].description =
-                                                        e.target.value
-                                                    form.setFieldValue(
-                                                        'items',
-                                                        newItems
-                                                    )
-                                                }}
-                                            />
-                                        </FormItem>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <FormItem
-                                            label="Quantity"
-                                            className="mb-0"
-                                        >
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                autoComplete="off"
-                                                name={`items.${index}.quantity`}
-                                                placeholder="Qty"
-                                                value={item.quantity}
-                                                onChange={(e) => {
-                                                    const newItems = [
-                                                        ...values.items,
-                                                    ]
-                                                    newItems[index].quantity =
-                                                        Number(e.target.value)
-                                                    form.setFieldValue(
-                                                        'items',
-                                                        newItems
-                                                    )
-                                                }}
-                                            />
-                                        </FormItem>
-                                    </div>
-                                    <div className="col-span-3">
-                                        <FormItem
-                                            label="Unit Price"
-                                            className="mb-0"
-                                        >
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                autoComplete="off"
-                                                name={`items.${index}.unitPrice`}
-                                                placeholder="Price"
-                                                value={item.unitPrice}
-                                                onChange={(e) => {
-                                                    const newItems = [
-                                                        ...values.items,
-                                                    ]
-                                                    newItems[index].unitPrice =
-                                                        Number(e.target.value)
-                                                    form.setFieldValue(
-                                                        'items',
-                                                        newItems
-                                                    )
-                                                }}
-                                            />
-                                        </FormItem>
-                                    </div>
-                                    <div className="col-span-2 flex justify-end">
-                                        {values.items.length > 1 && (
-                                            <Button
-                                                icon={<HiOutlineTrash />}
-                                                variant="plain"
-                                                size="sm"
-                                                type="button"
-                                                onClick={() =>
-                                                    removeItem(
-                                                        index,
-                                                        values,
-                                                        form.setFieldValue
-                                                    )
-                                                }
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                            <Button
-                                icon={<HiOutlinePlus />}
-                                variant="plain"
-                                size="sm"
-                                type="button"
-                                onClick={() =>
-                                    addItem(values, form.setFieldValue)
-                                }
-                            >
-                                Add Item
-                            </Button>
+                                    <Input
+                                        type="text"
+                                        autoComplete="off"
+                                        placeholder="Item description"
+                                        value={item.description}
+                                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                                    />
+                                </FormItem>
+                            </div>
+                            <div className="col-span-2">
+                                <FormItem
+                                    label="Quantity"
+                                    className="mb-0"
+                                    invalid={errors.items?.[index]?.quantity && touched.items?.[index]?.quantity}
+                                    errorMessage={errors.items?.[index]?.quantity}
+                                >
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        autoComplete="off"
+                                        placeholder="Qty"
+                                        value={item.quantity}
+                                        onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
+                                    />
+                                </FormItem>
+                            </div>
+                            <div className="col-span-3">
+                                <FormItem
+                                    label="Unit Price"
+                                    className="mb-0"
+                                    invalid={errors.items?.[index]?.unitPrice && touched.items?.[index]?.unitPrice}
+                                    errorMessage={errors.items?.[index]?.unitPrice}
+                                >
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        autoComplete="off"
+                                        placeholder="Price"
+                                        value={item.unitPrice}
+                                        onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
+                                    />
+                                </FormItem>
+                            </div>
+                            <div className="col-span-2 flex justify-end">
+                                {values.items.length > 1 && (
+                                    <Button
+                                        icon={<HiOutlineTrash />}
+                                        variant="plain"
+                                        size="sm"
+                                        type="button"
+                                        onClick={() => removeItem(index)}
+                                    />
+                                )}
+                            </div>
                         </div>
-                    )}
-                </Field>
+                    ))}
+                    <Button
+                        icon={<HiOutlinePlus />}
+                        variant="plain"
+                        size="sm"
+                        type="button"
+                        onClick={addItem}
+                    >
+                        Add Item
+                    </Button>
+                </div>
             </FormItem>
         </AdaptableCard>
     )

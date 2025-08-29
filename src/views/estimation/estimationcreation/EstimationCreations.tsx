@@ -125,6 +125,14 @@ const validationSchema = Yup.object().shape({
 });
 
 const measurementUnits = [
+  // Count/Other
+  { value: 'nos', label: 'Numbers (NOS)' },
+  { value: 'ls', label: 'Lumpsum (LS)' },
+  { value: 'pcs', label: 'Pieces (pcs)' },
+  { value: 'box', label: 'Box (box)' },
+  { value: 'dozen', label: 'Dozen (dozen)' },
+  { value: 'pack', label: 'Pack (pack)' },
+
   // Mass
   { value: 'kg', label: 'Kilogram (kg)' },
   { value: 'g', label: 'Gram (g)' },
@@ -158,12 +166,6 @@ const measurementUnits = [
   { value: 'sq_yd', label: 'Square Yard (yd²)' },
   { value: 'acre', label: 'Acre' },
   { value: 'hectare', label: 'Hectare (ha)' },
-
-  // Count/Other
-  { value: 'pcs', label: 'Pieces (pcs)' },
-  { value: 'box', label: 'Box (box)' },
-  { value: 'dozen', label: 'Dozen (dozen)' },
-  { value: 'pack', label: 'Pack (pack)' }
 ];
 
 const EstimationForm = forwardRef<FormikRef, EstimationFormProps>((props, ref) => {

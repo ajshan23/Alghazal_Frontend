@@ -39,11 +39,27 @@ const ClientNew = () => {
     const handleFormSubmit = async (values: FormModel, setSubmitting: SetSubmitting) => {
         setSubmitting(true)
         try {
+            // Filter out empty string values and convert them to null/undefined
+            const filteredValues = Object.entries(values).reduce((acc, [key, value]) => {
+                // Only include clientName even if it's empty (but it should be required in form)
+                if (key === 'clientName') {
+                    acc[key] = value
+                } else {
+                    // For other fields, only include if they have meaningful values
+                    if (value && value.trim && value.trim() !== '') {
+                        acc[key] = value
+                    } else if (value !== null && value !== undefined && value !== '') {
+                        acc[key] = value
+                    }
+                }
+                return acc
+            }, {} as any)
+
             let response
             if (id) {
-                response = await editClient(id, values)
+                response = await editClient(id, filteredValues)
             } else {
-                response = await createClient(values)
+                response = await createClient(filteredValues)
             }
 
             if (response.status === (id ? 200 : 201)) {
@@ -81,13 +97,14 @@ const ClientNew = () => {
         <ClientForm
             type={id ? 'edit' : 'new'}
             initialData={initialData || {
-                clientName: '',
+                clientName: '', // Only this field is required
                 clientAddress: '',
                 pincode: '',
                 mobileNumber: '',
-                telephoneNumber: null,
+                telephoneNumber: '',
                 trnNumber: '',
-                accountNumber:'',
+                email: '',
+                accountNumber: '',
             }}
             onFormSubmit={handleFormSubmit}
             onDiscard={handleDiscard}

@@ -55,7 +55,7 @@ const CustomerDetail = () => {
                 <div className="w-full">
                     <AdaptableCard>
                         {/* <CurrentSubscription /> */}
-                        <PaymentHistory />
+                        {/* <PaymentHistory /> */}
                         {/* <PaymentMethods /> */}
                     </AdaptableCard>
                 </div>

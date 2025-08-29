@@ -55,26 +55,32 @@ type ClientFormProps = {
   onFormSubmit: (formData: FormModel, setSubmitting: SetSubmitting) => Promise<{ id: string }>
 }
 
-// Validation Schema
+// Updated Validation Schema - Only clientName is required
 const validationSchema = Yup.object().shape({
   clientName: Yup.string().required('Client Name Required'),
   email: Yup.string()
-    .required('Email Required')
-    .email('Invalid email format'),
-  clientAddress: Yup.string().required('Client Address Required'),
+    .email('Invalid email format')
+    .nullable()
+    .notRequired(), // Changed from required to optional
+  clientAddress: Yup.string().nullable().notRequired(), // Changed from required to optional
   pincode: Yup.string()
-    .required('Pincode Required')
-    .matches(/^[0-9]+$/, 'Pincode must be numeric')
-    .min(6)
-    .max(6),
+    .matches(/^[0-9]*$/, 'Pincode must be numeric') // Allow empty string
+    .test('length', 'Pincode must be 6 digits if provided', function(value) {
+      if (!value || value === '') return true; // Allow empty
+      return value.length === 6;
+    })
+    .nullable()
+    .notRequired(), // Changed from required to optional
   mobileNumber: Yup.string()
-    .required('Mobile Number Required')
-    .matches(/^[0-9]+$/, 'Mobile number must be digits only'),
+    .matches(/^[0-9]*$/, 'Mobile number must be digits only') // Allow empty string
+    .nullable()
+    .notRequired(), // Changed from required to optional
   telephoneNumber: Yup.string()
-    .matches(/^[0-9]+$/, 'Telephone number must be digits only')
-    .nullable(),
-  trnNumber: Yup.string().required('TRN Number Required'),
-  accountNumber: Yup.string().required('Account Number Required'),
+    .matches(/^[0-9]*$/, 'Telephone number must be digits only') // Allow empty string
+    .nullable()
+    .notRequired(),
+  trnNumber: Yup.string().nullable().notRequired(), // Changed from required to optional
+  accountNumber: Yup.string().nullable().notRequired(), // Changed from required to optional
 })
 
 const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
@@ -177,18 +183,41 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
       validationSchema={validationSchema}
       onSubmit={async (values: Omit<InitialData, 'locations'>, { setSubmitting }) => {
         try {
+          // Filter out empty string values and convert them to meaningful data
+          const filteredValues = Object.entries(values).reduce((acc, [key, value]) => {
+            // Always include clientName (required field)
+            if (key === 'clientName') {
+              acc[key] = value || '';
+            } else {
+              // For other fields, only include if they have meaningful values
+              if (value && typeof value === 'string' && value.trim() !== '') {
+                acc[key] = value.trim();
+              } else if (value !== null && value !== undefined && value !== '') {
+                acc[key] = value;
+              }
+              // Skip empty strings, null, undefined for optional fields
+            }
+            return acc;
+          }, {} as any);
+
           // Structure the data exactly as required
           const formData: FormModel = {
-            ...values,
-            locations: locations.map(location => ({
-              name: location.name,
-              buildings: location.buildings.map(building => ({
-                name: building.name,
-                apartments: building.apartments.map(apartment => ({
-                  number: apartment.number
-                }))
+            ...filteredValues,
+            locations: locations
+              .filter(location => location.name.trim() !== '') // Only include locations with names
+              .map(location => ({
+                name: location.name.trim(),
+                buildings: location.buildings
+                  .filter(building => building.name.trim() !== '') // Only include buildings with names
+                  .map(building => ({
+                    name: building.name.trim(),
+                    apartments: building.apartments
+                      .filter(apartment => apartment.number.trim() !== '') // Only include apartments with numbers
+                      .map(apartment => ({
+                        number: apartment.number.trim()
+                      }))
+                  }))
               }))
-            }))
           }
 
           console.log('Form data to be submitted:', JSON.stringify(formData, null, 2))
@@ -229,15 +258,17 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                     label="Client Name"
                     invalid={!!(errors.clientName && touched.clientName)}
                     errorMessage={errors.clientName}
+                    asterisk={true} // Show required asterisk
                   >
                     <Field
                       type="text"
                       autoComplete="off"
                       name="clientName"
-                      placeholder="Client Name"
+                      placeholder="Client Name *"
                       component={Input}
                     />
                   </FormItem>
+                  
                   <FormItem
                     label="Email"
                     invalid={!!(errors.email && touched.email)}
@@ -247,7 +278,7 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                       type="text"
                       autoComplete="off"
                       name="email"
-                      placeholder="Email"
+                      placeholder="Email (Optional)"
                       component={Input}
                     />
                   </FormItem>
@@ -261,7 +292,7 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                       as="textarea"
                       autoComplete="off"
                       name="clientAddress"
-                      placeholder="Client Address"
+                      placeholder="Client Address (Optional)"
                       component={Input}
                       textArea
                     />
@@ -277,7 +308,7 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                         type="text"
                         autoComplete="off"
                         name="pincode"
-                        placeholder="Pincode"
+                        placeholder="Pincode (Optional)"
                         component={Input}
                       />
                     </FormItem>
@@ -291,24 +322,25 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                         type="text"
                         autoComplete="off"
                         name="trnNumber"
-                        placeholder="TRN Number"
-                        component={Input}
-                      />
-                    </FormItem>
-                    <FormItem
-                      label="Account Number"
-                      invalid={!!(errors.accountNumber && touched.accountNumber)}
-                      errorMessage={errors.accountNumber}
-                    >
-                      <Field
-                        type="text"
-                        autoComplete="off"
-                        name="accountNumber"
-                        placeholder="Account Number"
+                        placeholder="TRN Number (Optional)"
                         component={Input}
                       />
                     </FormItem>
                   </div>
+
+                  <FormItem
+                    label="Account Number"
+                    invalid={!!(errors.accountNumber && touched.accountNumber)}
+                    errorMessage={errors.accountNumber}
+                  >
+                    <Field
+                      type="text"
+                      autoComplete="off"
+                      name="accountNumber"
+                      placeholder="Account Number (Optional)"
+                      component={Input}
+                    />
+                  </FormItem>
 
                   <div className="md:grid grid-cols-2 gap-4">
                     <FormItem
@@ -320,7 +352,7 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                         type="text"
                         autoComplete="off"
                         name="mobileNumber"
-                        placeholder="Mobile Number"
+                        placeholder="Mobile Number (Optional)"
                         component={Input}
                       />
                     </FormItem>
@@ -334,7 +366,7 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                         type="text"
                         autoComplete="off"
                         name="telephoneNumber"
-                        placeholder="Telephone Number"
+                        placeholder="Telephone Number (Optional)"
                         component={Input}
                       />
                     </FormItem>
@@ -348,7 +380,7 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold flex items-center">
                   <HiOutlineLocationMarker className="mr-2 text-xl" />
-                  Location - Building - Apartment Structure
+                  Location - Building - Apartment Structure (Optional)
                 </h3>
                 <Button
                   size="sm"
@@ -365,7 +397,7 @@ const ClientForm = forwardRef<FormikRef, ClientFormProps>((props, ref) => {
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <HiOutlineOfficeBuilding className="mx-auto text-4xl mb-2 text-gray-300 dark:text-gray-600" />
                   <p>No locations added yet</p>
-                  <p className="text-sm mt-1">Click "Add Location" to get started</p>
+                  <p className="text-sm mt-1">Click "Add Location" to get started (Optional)</p>
                 </div>
               )}
 

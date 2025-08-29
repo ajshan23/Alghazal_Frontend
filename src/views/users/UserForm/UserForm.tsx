@@ -15,7 +15,6 @@ type FormikRef = FormikProps<any>
 
 const RoleOptions = [
     { label: 'Admin', value: 'admin' },
-    { label: 'Super Admin', value: 'super_admin' },
     { label: 'Engineer', value: 'engineer' },
     { label: 'Finance', value: 'finance' },
     { label: 'Driver', value: 'driver' },
@@ -38,6 +37,8 @@ type InitialData = {
     emiratesIdDocument?: string | File
     passportNumber?: string
     passportDocument?: string | File
+    iBANNumber?: string
+    address?: string
 }
 
 export type FormModel = Omit<InitialData, 'tags'> & {
@@ -73,7 +74,9 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
             emiratesId: '',
             emiratesIdDocument: '',
             passportNumber: '',
-            passportDocument: ''
+            passportDocument: '',
+            iBANNumber: '',
+            address: ''
         },
         onFormSubmit,
         onDiscard,
@@ -105,23 +108,19 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
         firstName: Yup.string().required('First Name is required'),
         lastName: Yup.string().required('Last Name is required'),
         email: Yup.string().email('Invalid email').required('Email is required'),
-        role: Yup.string().required('Role is required'),
+        role: Yup.string(), // Made optional
         password: type === 'new' 
             ? Yup.string().required('Password is required') 
             : Yup.string(),
         phoneNumbers: Yup.array()
-            .of(Yup.string().matches(/^[0-9]+$/, 'Phone number must be digits only'))
-            .min(1, 'At least one phone number is required'),
+            .of(Yup.string().matches(/^[0-9]+$/, 'Phone number must be digits only')),
         salary: Yup.number()
-            .moreThan(0, 'Salary must be greater than zero')
-            .when('role', {
-                is: (role: string) => !['admin', 'super_admin'].includes(role),
-                then: (schema) => schema.required('Salary is required for this role'),
-                otherwise: (schema) => schema.notRequired()
-            }),
+            .min(0, 'Salary cannot be negative'),
         accountNumber: Yup.string(),
         emiratesId: Yup.string(),
-        passportNumber: Yup.string()
+        passportNumber: Yup.string(),
+        iBANNumber: Yup.string(),
+        address: Yup.string()
     })
 
     return (
@@ -130,11 +129,13 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
             initialValues={{
                 ...initialData,
                 phoneNumbers: Array.isArray(initialData.phoneNumbers) 
-                    ? initialData.phoneNumbers 
+                    ? initialData.phoneNumbers.length > 0 ? initialData.phoneNumbers : ['']
                     : typeof initialData.phoneNumbers === 'string'
                         ? JSON.parse(initialData.phoneNumbers.replace(/'/g, '"')) 
                         : [''],
-                salary: initialData.salary || 0
+                salary: initialData.salary || 0,
+                iBANNumber: initialData.iBANNumber || '',
+                address: initialData.address || ''
             }}
             validationSchema={validationSchema}
             onSubmit={async (values, { setSubmitting, setErrors }) => {
@@ -143,25 +144,29 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                 formData.append('firstName', values.firstName || '')
                 formData.append('lastName', values.lastName || '')
                 formData.append('email', values.email || '')
-                formData.append('role', values.role || '')
                 
-                if (values.password) {
-                    formData.append('password', values.password)
-                }
+                if (values.role) formData.append('role', values.role)
+                if (values.password) formData.append('password', values.password)
+                if (values.address) formData.append('address', values.address)
 
-                let phoneNumbersArray = values.phoneNumbers || ['']
+                let phoneNumbersArray = values.phoneNumbers || []
                 if (!Array.isArray(phoneNumbersArray)) {
                     phoneNumbersArray = [phoneNumbersArray]
                 }
-                formData.append('phoneNumbers', JSON.stringify(phoneNumbersArray.filter(num => num.trim().length > 0)))
+                const filteredPhoneNumbers = phoneNumbersArray.filter(num => num && num.trim().length > 0)
+                if (filteredPhoneNumbers.length > 0) {
+                    formData.append('phoneNumbers', JSON.stringify(filteredPhoneNumbers))
+                }
 
-                if (values.role && !['admin', 'super_admin'].includes(values.role)) {
-                    formData.append('salary', values.salary?.toString() || '0')
+                // Add salary for all roles if it has value
+                if (values.salary !== undefined && values.salary !== null) {
+                    formData.append('salary', values.salary.toString())
                 }
 
                 if (values.accountNumber) formData.append('accountNumber', values.accountNumber)
                 if (values.emiratesId) formData.append('emiratesId', values.emiratesId)
                 if (values.passportNumber) formData.append('passportNumber', values.passportNumber)
+                if (values.iBANNumber) formData.append('iBANNumber', values.iBANNumber)
 
                 if (profileImageFile) formData.append('profileImage', profileImageFile)
                 if (signatureImageFile) formData.append('signatureImage', signatureImageFile)
@@ -276,8 +281,6 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                     setExistingFiles(prev => ({ ...prev, passportDocument: '' }))
                 }
 
-                const showSalaryField = !['admin', 'super_admin'].includes(values.role)
-
                 return (
                     <Form>
                         <FormContainer>
@@ -287,7 +290,7 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                         <h5 className="mb-4">Basic Information</h5>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormItem
-                                                label="First Name"
+                                                label="First Name *"
                                                 invalid={!!errors.firstName && touched.firstName}
                                                 errorMessage={errors.firstName as string}
                                             >
@@ -301,7 +304,7 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                             </FormItem>
 
                                             <FormItem
-                                                label="Last Name"
+                                                label="Last Name *"
                                                 invalid={!!errors.lastName && touched.lastName}
                                                 errorMessage={errors.lastName as string}
                                             >
@@ -317,7 +320,7 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormItem
-                                                label="Email"
+                                                label="Email *"
                                                 invalid={!!errors.email && touched.email}
                                                 errorMessage={errors.email as string}
                                             >
@@ -357,23 +360,39 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                             </FormItem>
                                         </div>
 
-                                        {showSalaryField && (
-                                            <FormItem
-                                                label="Salary"
-                                                invalid={!!errors.salary && touched.salary}
-                                                errorMessage={errors.salary as string}
-                                            >
-                                                <Field
-                                                    type="number"
-                                                    autoComplete="off"
-                                                    name="salary"
-                                                    placeholder="Salary"
-                                                    component={Input}
-                                                    min="0"
-                                                    step="0.01"
-                                                />
-                                            </FormItem>
-                                        )}
+                                        <FormItem
+                                            label="Address"
+                                        >
+                                            <Field name="address">
+                                                {({ field, form }: FieldProps) => (
+                                                    <Input
+                                                        as="textarea"
+                                                        rows={3}
+                                                        placeholder="Full Address"
+                                                        {...field}
+                                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                                            form.setFieldValue(field.name, e.target.value)
+                                                        }}
+                                                    />
+                                                )}
+                                            </Field>
+                                        </FormItem>
+
+                                        <FormItem
+                                            label="Salary"
+                                            invalid={!!errors.salary && touched.salary}
+                                            errorMessage={errors.salary as string}
+                                        >
+                                            <Field
+                                                type="number"
+                                                autoComplete="off"
+                                                name="salary"
+                                                placeholder="Salary"
+                                                component={Input}
+                                                min="0"
+                                                step="0.01"
+                                            />
+                                        </FormItem>
                                     </AdaptableCard>
 
                                     <AdaptableCard divider className="mb-4">
@@ -434,17 +453,31 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                             )}
                                         </FieldArray>
 
-                                        <FormItem
-                                            label="Account Number"
-                                        >
-                                            <Field
-                                                type="text"
-                                                autoComplete="off"
-                                                name="accountNumber"
-                                                placeholder="Bank Account Number"
-                                                component={Input}
-                                            />
-                                        </FormItem>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormItem
+                                                label="Account Number"
+                                            >
+                                                <Field
+                                                    type="text"
+                                                    autoComplete="off"
+                                                    name="accountNumber"
+                                                    placeholder="Bank Account Number"
+                                                    component={Input}
+                                                />
+                                            </FormItem>
+                                            
+                                            <FormItem
+                                                label="IBAN Number"
+                                            >
+                                                <Field
+                                                    type="text"
+                                                    autoComplete="off"
+                                                    name="iBANNumber"
+                                                    placeholder="IBAN Number"
+                                                    component={Input}
+                                                />
+                                            </FormItem>
+                                        </div>
                                     </AdaptableCard>
 
                                     <AdaptableCard divider className="mb-4">
@@ -562,7 +595,7 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                         <AdaptableCard divider className="mb-4">
                                             <h5 className="mb-4">Security</h5>
                                             <FormItem
-                                                label="Password"
+                                                label="Password *"
                                                 invalid={!!errors.password && touched.password}
                                                 errorMessage={errors.password as string}
                                             >

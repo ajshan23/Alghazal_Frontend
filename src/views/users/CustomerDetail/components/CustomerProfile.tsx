@@ -75,89 +75,115 @@ const StaffProfile = () => {
     });
   };
 
-const exportToPDF = () => {
+const exportToPDF = async () => {
   const doc = new jsPDF();
 
-  // Add profile image
-  if (profile.profileImage) {
-    const imgWidth = 30; // width of the image
-    const imgHeight = 30; // height of the image
-    const xPos = 160; // position from left
-    const yPos = 10;  // position from top
+  // helper to detect image format
+  const getImageFormat = (base64: string) => {
+    const match = base64.match(/^data:image\/(\w+);base64,/);
+    return match ? match[1].toUpperCase() : 'JPEG'; // default JPEG
+  };
 
-    // Draw a circle and clip
-    doc.circle(xPos + imgWidth / 2, yPos + imgHeight / 2, imgWidth / 2, 'S'); // optional border
-    doc.addImage(profile.profileImage, 'JPEG', xPos, yPos, imgWidth, imgHeight);
+  // helper to convert URL -> base64
+  const toBase64 = async (url: string) => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // 🔹 Add profile image
+  if (profile.profileImage) {
+    let base64Img = profile.profileImage;
+
+    // if it’s a plain URL, convert it to base64
+    if (!base64Img.startsWith("data:image")) {
+      base64Img = await toBase64(profile.profileImage);
+    }
+
+    const format = getImageFormat(base64Img);
+    const imgWidth = 30;
+    const imgHeight = 30;
+    const xPos = 160;
+    const yPos = 10;
+
+    // Optional circle outline (doesn't actually crop)
+    doc.circle(xPos + imgWidth / 2, yPos + imgHeight / 2, imgWidth / 2, "S");
+
+    // Add the image
+    doc.addImage(base64Img, format, xPos, yPos, imgWidth, imgHeight);
   }
 
-  // Add title
+  // 🔹 Title
   doc.setFontSize(20);
   doc.text(`Employee Profile: ${profile.firstName} ${profile.lastName}`, 14, 20);
 
-  // Add profile information
+  // 🔹 Profile information
   doc.setFontSize(12);
   let yPosition = 40;
 
   // Basic Info
-  doc.text('Basic Information', 14, yPosition);
+  doc.text("Basic Information", 14, yPosition);
   yPosition += 10;
   autoTable(doc, {
     startY: yPosition,
-    head: [['Field', 'Value']],
+    head: [["Field", "Value"]],
     body: [
-      ['Name', `${profile.firstName} ${profile.lastName}`],
-      ['Role', profile.role],
-      ['Status', profile.isActive ? 'Active' : 'Inactive'],
-      ['Join Date', formatDate(profile.createdAt)],
+      ["Name", `${profile.firstName} ${profile.lastName}`],
+      ["Role", profile.role],
+      ["Status", profile.isActive ? "Active" : "Inactive"],
+      ["Join Date", formatDate(profile.createdAt)],
     ],
   });
   yPosition = (doc as any).lastAutoTable.finalY + 15;
 
   // Contact Info
-  doc.text('Contact Information', 14, yPosition);
+  doc.text("Contact Information", 14, yPosition);
   yPosition += 10;
   const phoneRows = profile.phoneNumbers.map((phone, index) => [
     `Phone ${index + 1}`,
-    phone
+    phone,
   ]);
   autoTable(doc, {
     startY: yPosition,
-    head: [['Field', 'Value']],
-    body: [
-      ['Email', profile.email],
-      ...phoneRows,
-      ['Address', profile.address],
-    ],
+    head: [["Field", "Value"]],
+    body: [["Email", profile.email], ...phoneRows, ["Address", profile.address]],
   });
   yPosition = (doc as any).lastAutoTable.finalY + 15;
 
   // Financial Info
-  doc.text('Financial Information', 14, yPosition);
+  doc.text("Financial Information", 14, yPosition);
   yPosition += 10;
   autoTable(doc, {
     startY: yPosition,
-    head: [['Field', 'Value']],
+    head: [["Field", "Value"]],
     body: [
-      ['Salary', `AED ${profile.salary.toLocaleString('en-US')}`],
-      ['Account Number', profile.accountNumber],
+      ["Salary", `AED ${profile.salary.toLocaleString("en-US")}`],
+      ["Account Number", profile.accountNumber],
     ],
   });
   yPosition = (doc as any).lastAutoTable.finalY + 15;
 
   // Documents Info
-  doc.text('Documents', 14, yPosition);
+  doc.text("Documents", 14, yPosition);
   yPosition += 10;
   autoTable(doc, {
     startY: yPosition,
-    head: [['Document', 'Number']],
+    head: [["Document", "Number"]],
     body: [
-      ['Emirates ID', profile.emiratesId],
-      ['Passport', profile.passportNumber],
+      ["Emirates ID", profile.emiratesId],
+      ["Passport", profile.passportNumber],
     ],
   });
 
+  // 🔹 Save file
   doc.save(`${profile.firstName}_${profile.lastName}_Profile.pdf`);
 };
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 transition-colors">

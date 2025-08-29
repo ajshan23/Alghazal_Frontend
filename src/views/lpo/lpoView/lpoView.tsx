@@ -152,23 +152,7 @@ const LPODetailView = () => {
               />
               <h3 className="text-xl font-bold">Purchase Order Details</h3>
             </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="plain"
-                color="red"
-                icon={<HiTrash />}
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
-              <Button
-                variant="solid"
-                icon={<HiPrinter />}
-                onClick={() => window.print()}
-              >
-                Print
-              </Button>
-            </div>
+            
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -194,18 +178,10 @@ const LPODetailView = () => {
                     <h4 className="font-semibold">Supplier</h4>
                     <p>{lpo.supplier}</p>
                   </div>
+                 
+                 
                   <div>
-                    <h4 className="font-semibold">Project ID</h4>
-                    <p>{lpo.project}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Created By</h4>
-                    <p>
-                      {lpo.createdBy.firstName} {lpo.createdBy.lastName}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Created On</h4>
+                    <h4 className="font-semibold">Attached On</h4>
                     <p>{dayjs(lpo.createdAt).format('MMMM D, YYYY h:mm A')}</p>
                   </div>
                 </div>
