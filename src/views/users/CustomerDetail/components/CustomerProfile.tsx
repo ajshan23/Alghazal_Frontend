@@ -42,30 +42,34 @@ const StaffProfile = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      const response = await fetchUserView(id);
-      setProfile({
-        firstName: response?.data?.firstName || 'Not provided',
-        lastName: response?.data?.lastName || '',
-        email: response?.data?.email || 'Not provided',
-        phoneNumbers: response?.data?.phoneNumbers || [],
-        role: response?.data?.role || 'Not specified',
-        profileImage: response?.data?.profileImage,
-        signatureImage: response?.data?.signatureImage,
-        salary: response?.data?.salary || 0,
-        address: response?.data?.address || 'Not provided',
-        accountNumber: response?.data?.accountNumber || 'Not provided',
-        emiratesId: response?.data?.emiratesId || 'Not provided',
-        emiratesIdDocument: response?.data?.emiratesIdDocument,
-        passportNumber: response?.data?.passportNumber || 'Not provided',
-        passportDocument: response?.data?.passportDocument,
-        isActive: response?.data?.isActive || false,
-        createdAt: response?.data?.createdAt || ''
-      });
+      try {
+        const response = await fetchUserView(id);
+        setProfile({
+          firstName: response?.data?.firstName || 'Not provided',
+          lastName: response?.data?.lastName || '',
+          email: response?.data?.email || 'Not provided',
+          phoneNumbers: response?.data?.phoneNumbers || [],
+          role: response?.data?.role || 'Not specified',
+          profileImage: response?.data?.profileImage,
+          signatureImage: response?.data?.signatureImage,
+          salary: response?.data?.salary || 0,
+          address: response?.data?.address || 'Not provided',
+          accountNumber: response?.data?.accountNumber || 'Not provided',
+          emiratesId: response?.data?.emiratesId || 'Not provided',
+          emiratesIdDocument: response?.data?.emiratesIdDocument,
+          passportNumber: response?.data?.passportNumber || 'Not provided',
+          passportDocument: response?.data?.passportDocument,
+          isActive: response?.data?.isActive || false,
+          createdAt: response?.data?.createdAt || ''
+        });
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      }
     };
     loadData();
   }, [id]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString) => {
     if (!dateString) return 'Not available';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -75,178 +79,300 @@ const StaffProfile = () => {
     });
   };
 
-const exportToPDF = async () => {
-  const doc = new jsPDF();
+  const exportToPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Set document properties
+      doc.setProperties({
+        title: `${profile.firstName} ${profile.lastName} - Employee Profile`,
+        subject: 'Employee Profile Export',
+        author: 'Company HR System'
+      });
 
-  // helper to detect image format
-  const getImageFormat = (base64: string) => {
-    const match = base64.match(/^data:image\/(\w+);base64,/);
-    return match ? match[1].toUpperCase() : 'JPEG'; // default JPEG
-  };
+      // Title
+      doc.setFontSize(20);
+      doc.setFont(undefined, 'bold');
+      doc.text(`Employee Profile: ${profile.firstName} ${profile.lastName}`, 14, 20);
 
-  // helper to convert URL -> base64
-  const toBase64 = async (url: string) => {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
+      let yPosition = 30;
 
-  // 🔹 Add profile image
-  if (profile.profileImage) {
-    let base64Img = profile.profileImage;
+      // Basic Information
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text("Basic Information", 14, yPosition);
+      yPosition += 8;
 
-    // if it’s a plain URL, convert it to base64
-    if (!base64Img.startsWith("data:image")) {
-      base64Img = await toBase64(profile.profileImage);
+      autoTable(doc, {
+        startY: yPosition,
+        head: [["Field", "Value"]],
+        body: [
+          ["Name", `${profile.firstName} ${profile.lastName}`],
+          ["Role", profile.role],
+          ["Status", profile.isActive ? "Active" : "Inactive"],
+          ["Join Date", formatDate(profile.createdAt)],
+        ],
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [66, 139, 202],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      yPosition = doc.lastAutoTable.finalY + 15;
+
+      // Contact Information
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text("Contact Information", 14, yPosition);
+      yPosition += 8;
+
+      const phoneRows = profile.phoneNumbers.map((phone, index) => [
+        `Phone ${index + 1}`,
+        phone,
+      ]);
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [["Field", "Value"]],
+        body: [
+          ["Email", profile.email], 
+          ...phoneRows, 
+          ["Address", profile.address]
+        ],
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [66, 139, 202],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        margin: { left: 14, right: 14 },
+        styles: {
+          cellPadding: 4,
+          fontSize: 10,
+        },
+        columnStyles: {
+          0: { cellWidth: 40 },
+          1: { cellWidth: 'auto' }
+        }
+      });
+
+      yPosition = doc.lastAutoTable.finalY + 15;
+
+      // Financial Information
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text("Financial Information", 14, yPosition);
+      yPosition += 8;
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [["Field", "Value"]],
+        body: [
+          ["Salary", `AED ${profile.salary.toLocaleString("en-US")}`],
+          ["Account Number", profile.accountNumber],
+        ],
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [66, 139, 202],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      yPosition = doc.lastAutoTable.finalY + 15;
+
+      // Documents Information
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text("Documents", 14, yPosition);
+      yPosition += 8;
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [["Document", "Number"]],
+        body: [
+          ["Emirates ID", profile.emiratesId],
+          ["Passport", profile.passportNumber],
+        ],
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [66, 139, 202],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      // Save the PDF
+      const fileName = `${profile.firstName}_${profile.lastName}_Profile.pdf`.replace(/\s+/g, '_');
+      doc.save(fileName);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again or check the console for details.');
     }
-
-    const format = getImageFormat(base64Img);
-    const imgWidth = 30;
-    const imgHeight = 30;
-    const xPos = 160;
-    const yPos = 10;
-
-    // Optional circle outline (doesn't actually crop)
-    doc.circle(xPos + imgWidth / 2, yPos + imgHeight / 2, imgWidth / 2, "S");
-
-    // Add the image
-    doc.addImage(base64Img, format, xPos, yPos, imgWidth, imgHeight);
-  }
-
-  // 🔹 Title
-  doc.setFontSize(20);
-  doc.text(`Employee Profile: ${profile.firstName} ${profile.lastName}`, 14, 20);
-
-  // 🔹 Profile information
-  doc.setFontSize(12);
-  let yPosition = 40;
-
-  // Basic Info
-  doc.text("Basic Information", 14, yPosition);
-  yPosition += 10;
-  autoTable(doc, {
-    startY: yPosition,
-    head: [["Field", "Value"]],
-    body: [
-      ["Name", `${profile.firstName} ${profile.lastName}`],
-      ["Role", profile.role],
-      ["Status", profile.isActive ? "Active" : "Inactive"],
-      ["Join Date", formatDate(profile.createdAt)],
-    ],
-  });
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
-
-  // Contact Info
-  doc.text("Contact Information", 14, yPosition);
-  yPosition += 10;
-  const phoneRows = profile.phoneNumbers.map((phone, index) => [
-    `Phone ${index + 1}`,
-    phone,
-  ]);
-  autoTable(doc, {
-    startY: yPosition,
-    head: [["Field", "Value"]],
-    body: [["Email", profile.email], ...phoneRows, ["Address", profile.address]],
-  });
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
-
-  // Financial Info
-  doc.text("Financial Information", 14, yPosition);
-  yPosition += 10;
-  autoTable(doc, {
-    startY: yPosition,
-    head: [["Field", "Value"]],
-    body: [
-      ["Salary", `AED ${profile.salary.toLocaleString("en-US")}`],
-      ["Account Number", profile.accountNumber],
-    ],
-  });
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
-
-  // Documents Info
-  doc.text("Documents", 14, yPosition);
-  yPosition += 10;
-  autoTable(doc, {
-    startY: yPosition,
-    head: [["Document", "Number"]],
-    body: [
-      ["Emirates ID", profile.emiratesId],
-      ["Passport", profile.passportNumber],
-    ],
-  });
-
-  // 🔹 Save file
-  doc.save(`${profile.firstName}_${profile.lastName}_Profile.pdf`);
-};
-
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 transition-colors">
-      <div className="max-w-7xl mx-auto">
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
+      padding: '1rem',
+      color: '#1f2937'
+    }}>
+      {/* Main Container */}
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '1.5rem',
+          gap: '1rem'
+        }}>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+            <h1 style={{
+              fontSize: '1.875rem',
+              fontWeight: 'bold',
+              color: '#1f2937'
+            }}>
               Employee Profile
             </h1>
           </div>
           <button
             onClick={exportToPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer'
+            }}
           >
-            <HiDownload className="text-lg" />
+            <HiDownload style={{ fontSize: '1.125rem' }} />
             <span>Export PDF</span>
           </button>
         </div>
 
         {/* Profile Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6 transition-colors">
-          <div className="flex flex-col md:flex-row items-center gap-6">
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '0.75rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          border: '1px solid #e5e7eb',
+          padding: '1.5rem',
+          marginBottom: '1.5rem'
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1.5rem'
+          }}>
             {/* Profile Image */}
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
               {profile.profileImage ? (
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden">
+                <div style={{
+                  width: '6rem',
+                  height: '6rem',
+                  borderRadius: '9999px',
+                  border: '4px solid white',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                  overflow: 'hidden'
+                }}>
                   <img
                     src={profile.profileImage}
                     alt="Profile"
-                    className="w-full h-full object-cover"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
                   />
                 </div>
               ) : (
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 dark:bg-gray-700 border-4 border-white dark:border-gray-800 flex items-center justify-center shadow-lg">
-                  <HiUserCircle className="text-6xl md:text-8xl text-gray-400 dark:text-gray-500" />
+                <div style={{
+                  width: '6rem',
+                  height: '6rem',
+                  borderRadius: '9999px',
+                  backgroundColor: '#e5e7eb',
+                  border: '4px solid white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <HiUserCircle style={{ fontSize: '3rem', color: '#9ca3af' }} />
                 </div>
               )}
-              <span className={`absolute bottom-2 right-2 md:bottom-3 md:right-3 w-4 h-4 md:w-5 md:h-5 rounded-full border-2 border-white dark:border-gray-800 ${
-                profile.isActive ? 'bg-green-500' : 'bg-red-500'
-              }`}></span>
+              <span style={{
+                position: 'absolute',
+                bottom: '0.5rem',
+                right: '0.5rem',
+                width: '1rem',
+                height: '1rem',
+                borderRadius: '9999px',
+                border: '2px solid white',
+                backgroundColor: profile.isActive ? '#10b981' : '#ef4444'
+              }}></span>
             </div>
 
             {/* Profile Info */}
-            <div className="flex-1 text-center md:text-left">
-              <div className="mb-2">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ marginBottom: '0.5rem' }}>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937'
+                }}>
                   {profile.firstName} {profile.lastName}
                 </h2>
-                <p className="text-blue-600 dark:text-blue-400 text-lg">{profile.role}</p>
+                <p style={{ color: '#2563eb', fontSize: '1.125rem' }}>{profile.role}</p>
               </div>
 
-              <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  profile.isActive 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                }`}>
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: '0.75rem'
+              }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  backgroundColor: profile.isActive ? '#dcfce7' : '#fee2e2',
+                  color: profile.isActive ? '#166534' : '#991b1b'
+                }}>
                   {profile.isActive ? 'Active' : 'Inactive'}
                 </div>
 
-                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                  <HiCalendar className="mr-1" />
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151'
+                }}>
+                  <HiCalendar style={{ marginRight: '0.25rem' }} />
                   <span>Joined {formatDate(profile.createdAt)}</span>
                 </div>
               </div>
@@ -255,41 +381,88 @@ const exportToPDF = async () => {
         </div>
 
         {/* Main Content Sections */}
-        <div className="space-y-6">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '1.5rem'
+        }}>
+          
           {/* Contact Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '1.5rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
               Contact Information
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
               <div>
-                <div className="flex items-center text-gray-600 dark:text-gray-400 mb-1">
-                  <HiMail className="mr-2 text-blue-500 text-lg" />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#6b7280',
+                  marginBottom: '0.25rem'
+                }}>
+                  <HiMail style={{ marginRight: '0.5rem', color: '#3b82f6', fontSize: '1.125rem' }} />
                   <span>Email</span>
                 </div>
-                <p className="text-gray-800 dark:text-gray-200 font-medium pl-7 break-all">
+                <p style={{
+                  color: '#1f2937',
+                  fontWeight: '500',
+                  paddingLeft: '1.75rem',
+                  wordBreak: 'break-all'
+                }}>
                   {profile.email}
                 </p>
               </div>
 
               {profile.phoneNumbers?.map((phone, index) => (
                 <div key={index}>
-                  <div className="flex items-center text-gray-600 dark:text-gray-400 mb-1">
-                    <HiPhone className="mr-2 text-blue-500 text-lg" />
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: '#6b7280',
+                    marginBottom: '0.25rem'
+                  }}>
+                    <HiPhone style={{ marginRight: '0.5rem', color: '#3b82f6', fontSize: '1.125rem' }} />
                     <span>Phone {index > 0 ? index + 1 : ''}</span>
                   </div>
-                  <p className="text-gray-800 dark:text-gray-200 font-medium pl-7">
+                  <p style={{
+                    color: '#1f2937',
+                    fontWeight: '500',
+                    paddingLeft: '1.75rem'
+                  }}>
                     {phone}
                   </p>
                 </div>
               ))}
 
-              <div className="md:col-span-2">
-                <div className="flex items-center text-gray-600 dark:text-gray-400 mb-1">
-                  <HiLocationMarker className="mr-2 text-blue-500 text-lg" />
+              <div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#6b7280',
+                  marginBottom: '0.25rem'
+                }}>
+                  <HiLocationMarker style={{ marginRight: '0.5rem', color: '#3b82f6', fontSize: '1.125rem' }} />
                   <span>Address</span>
                 </div>
-                <p className="text-gray-800 dark:text-gray-200 font-medium pl-7 whitespace-pre-line">
+                <p style={{
+                  color: '#1f2937',
+                  fontWeight: '500',
+                  paddingLeft: '1.75rem',
+                  whiteSpace: 'pre-line'
+                }}>
                   {profile.address}
                 </p>
               </div>
@@ -297,143 +470,339 @@ const exportToPDF = async () => {
           </div>
 
           {/* Financial Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '1.5rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
               Financial Information
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
               <div>
-                <div className="flex items-center text-gray-600 dark:text-gray-400 mb-1">
-                  <HiCash className="mr-2 text-blue-500 text-lg" />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#6b7280',
+                  marginBottom: '0.25rem'
+                }}>
+                  <HiCash style={{ marginRight: '0.5rem', color: '#3b82f6', fontSize: '1.125rem' }} />
                   <span>Salary</span>
                 </div>
-                <p className="text-gray-800 dark:text-gray-200 font-medium pl-7">
+                <p style={{
+                  color: '#1f2937',
+                  fontWeight: '500',
+                  paddingLeft: '1.75rem'
+                }}>
                   AED {profile.salary.toLocaleString('en-US')}
                 </p>
               </div>
 
               <div>
-                <div className="flex items-center text-gray-600 dark:text-gray-400 mb-1">
-                  <HiCreditCard className="mr-2 text-blue-500 text-lg" />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#6b7280',
+                  marginBottom: '0.25rem'
+                }}>
+                  <HiCreditCard style={{ marginRight: '0.5rem', color: '#3b82f6', fontSize: '1.125rem' }} />
                   <span>Account Number</span>
                 </div>
-                <p className="text-gray-800 dark:text-gray-200 font-medium pl-7 break-all">
+                <p style={{
+                  color: '#1f2937',
+                  fontWeight: '500',
+                  paddingLeft: '1.75rem',
+                  wordBreak: 'break-all'
+                }}>
                   {profile.accountNumber}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Documents Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Emirates ID */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
-              <div className="flex items-center mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
-                <div className="p-3 mr-4 bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-200 rounded-lg">
-                  <HiIdentification className="text-2xl" />
+          {/* Emirates ID */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            padding: '1.5rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <div style={{
+                padding: '0.75rem',
+                marginRight: '1rem',
+                backgroundColor: '#dbeafe',
+                color: '#2563eb',
+                borderRadius: '0.5rem'
+              }}>
+                <HiIdentification style={{ fontSize: '1.5rem' }} />
+              </div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                color: '#1f2937'
+              }}>
+                Emirates ID
+              </h3>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#6b7280',
+                  marginBottom: '0.5rem'
+                }}>
+                  ID Number
+                </p>
+                <div style={{
+                  padding: '0.75rem',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #e5e7eb',
+                  wordBreak: 'break-word'
+                }}>
+                  <p style={{
+                    fontWeight: '500',
+                    color: '#1f2937'
+                  }}>
+                    {profile.emiratesId}
+                  </p>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Emirates ID</h3>
               </div>
               
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">ID Number</p>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 break-words">
-                    <p className="font-medium text-gray-800 dark:text-gray-200">
-                      {profile.emiratesId}
+              <div style={{
+                paddingTop: '1rem',
+                borderTop: '1px solid #e5e7eb'
+              }}>
+                {profile.emiratesIdDocument ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <a 
+                      href={profile.emiratesIdDocument}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        backgroundColor: '#2563eb',
+                        color: 'white',
+                        borderRadius: '0.5rem',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <HiDocument style={{ fontSize: '1.25rem' }} />
+                      <span>View Document</span>
+                    </a>
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      textAlign: 'center'
+                    }}>
+                      Click to view full document
                     </p>
                   </div>
-                </div>
-                
-                <div className="pt-4 pr-20 border-t border-gray-200 dark:border-gray-700">
-                  {profile.emiratesIdDocument ? (
-                    <div className="space-y-3 px-10">
-                      <a 
-                        href={profile.emiratesIdDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:text-base"
-                      >
-                        <HiDocument className="text-xl" />
-                        <span>View Document</span>
-                      </a>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                        Click to view full document
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      No document uploaded
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '1.5rem',
+                    color: '#6b7280',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '0.5rem'
+                  }}>
+                    No document uploaded
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Passport */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
-              <div className="flex items-center mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
-                <div className="p-3 mr-4 bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-200 rounded-lg">
-                  <FaPassport className="text-2xl" />
+          {/* Passport */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            padding: '1.5rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <div style={{
+                padding: '0.75rem',
+                marginRight: '1rem',
+                backgroundColor: '#dcfce7',
+                color: '#16a34a',
+                borderRadius: '0.5rem'
+              }}>
+                <FaPassport style={{ fontSize: '1.5rem' }} />
+              </div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                color: '#1f2937'
+              }}>
+                Passport
+              </h3>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#6b7280',
+                  marginBottom: '0.5rem'
+                }}>
+                  Passport Number
+                </p>
+                <div style={{
+                  padding: '0.75rem',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #e5e7eb',
+                  wordBreak: 'break-word'
+                }}>
+                  <p style={{
+                    fontWeight: '500',
+                    color: '#1f2937'
+                  }}>
+                    {profile.passportNumber}
+                  </p>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Passport</h3>
               </div>
               
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Passport Number</p>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 break-words">
-                    <p className="font-medium text-gray-800 dark:text-gray-200">
-                      {profile.passportNumber}
+              <div style={{
+                paddingTop: '1rem',
+                borderTop: '1px solid #e5e7eb'
+              }}>
+                {profile.passportDocument ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <a 
+                      href={profile.passportDocument}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        backgroundColor: '#16a34a',
+                        color: 'white',
+                        borderRadius: '0.5rem',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <HiDocument style={{ fontSize: '1.25rem' }} />
+                      <span>View Document</span>
+                    </a>
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      textAlign: 'center'
+                    }}>
+                      Click to view full document
                     </p>
                   </div>
-                </div>
-                
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  {profile.passportDocument ? (
-                    <div className="space-y-3">
-                      <a 
-                        href={profile.passportDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm sm:text-base"
-                      >
-                        <HiDocument className="text-xl" />
-                        <span>View Document</span>
-                      </a>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                        Click to view full document
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      No document uploaded
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '1.5rem',
+                    color: '#6b7280',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '0.5rem'
+                  }}>
+                    No document uploaded
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Signature */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
-            <div className="flex items-center mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
-              <div className="p-3 mr-4 bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-200 rounded-lg">
-                <FaSignature className="text-2xl" />
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb',
+            padding: '1.5rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <div style={{
+                padding: '0.75rem',
+                marginRight: '1rem',
+                backgroundColor: '#f3e8ff',
+                color: '#9333ea',
+                borderRadius: '0.5rem'
+              }}>
+                <FaSignature style={{ fontSize: '1.5rem' }} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Signature</h3>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                color: '#1f2937'
+              }}>
+                Signature
+              </h3>
             </div>
             
-            <div className="flex justify-center p-4 sm:p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 overflow-x-auto">
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '1rem',
+              backgroundColor: '#f9fafb',
+              borderRadius: '0.5rem',
+              border: '1px solid #e5e7eb',
+              overflowX: 'auto'
+            }}>
               {profile.signatureImage ? (
                 <img 
                   src={profile.signatureImage} 
                   alt="Signature" 
-                  className="max-h-32 object-contain dark:filter dark:invert"
-                  style={{ maxWidth: '100%' }}
+                  style={{
+                    maxHeight: '8rem',
+                    objectFit: 'contain',
+                    maxWidth: '100%'
+                  }}
                 />
               ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div style={{
+                  textAlign: 'center',
+                  padding: '2rem',
+                  color: '#6b7280'
+                }}>
                   No signature uploaded
                 </div>
               )}
