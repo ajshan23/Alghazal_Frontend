@@ -9,9 +9,9 @@ const defaultShopData = {
     shopName: '',
     shopNo: '',
     address: '',
-    vat: '', // Optional field
-    ownerName: '', // Optional field  
-    ownerEmail: '', // Optional field
+    vat: '',
+    ownerName: '',
+    ownerEmail: '',
     contact: '',
     shopAttachments: [],
 }
@@ -20,7 +20,7 @@ const NewShopDetails = () => {
     const navigate = useNavigate()
     const { id } = useParams()
     const [initialData, setInitialData] = useState<any>(defaultShopData)
-    console.log('initialData:', initialData)
+                        console.log('initialData:', initialData)
 
     const [loading, setLoading] = useState(!!id)
 
@@ -33,13 +33,14 @@ const NewShopDetails = () => {
                         throw new Error('Invalid shop data')
                     }
 
+
                     setInitialData({
                         shopName: response.data.shopName || '',
                         shopNo: response.data.shopNo || '',
                         address: response.data.address || '',
-                        vat: response.data.vat || '', // Handle optional field
-                        ownerName: response.data.ownerName || '', // Handle optional field
-                        ownerEmail: response.data.ownerEmail || '', // Handle optional field
+                        vat: response.data.vat || '',
+                        ownerName: response.data.ownerName || '',
+                        ownerEmail: response.data.ownerEmail || '',
                         contact: response.data.contact || '',
                         shopAttachments: response.data.shopAttachments || [],
                     })
@@ -60,7 +61,7 @@ const NewShopDetails = () => {
                         { placement: 'top-center' }
                     )
 
-                    navigate('/app/shop-view')
+                    navigate('/app/user-list')
                 }
             }
 

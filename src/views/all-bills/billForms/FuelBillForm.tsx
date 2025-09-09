@@ -22,6 +22,8 @@ const PaymentMethodOptions = [
     { label: 'Cash', value: 'cash' },
     { label: 'MASHREQ CARD', value: 'masherq_card' },
     { label: 'ATHEER PLUS ', value: 'atheer_plus' },
+    {label :'CREDIT',value:'credit'}
+
 ]
 
 type InitialData = {

@@ -804,7 +804,7 @@ const LabourExpensesForm = forwardRef<FormikRef, LabourExpensesFormProps>((props
                       </FormItem>
 
                       <FormItem
-                        label="2 YEAR ACCOMMODATION + OFFICE RENT"
+                        label="ACCOM. & OFFICE RENT"
                         invalid={!!errors.twoYearAccommodation}
                         errorMessage={errors.twoYearAccommodation as string}
                       >
@@ -846,7 +846,7 @@ const LabourExpensesForm = forwardRef<FormikRef, LabourExpensesFormProps>((props
                       </FormItem>
 
                       <FormItem
-                        label="WORKMAN COMPENSATION INSURANCE"
+                        label="WC INSURANCE"
                         invalid={!!errors.insurance}
                         errorMessage={errors.insurance as string}
                       >

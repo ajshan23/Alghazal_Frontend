@@ -1311,3 +1311,15 @@ export const getYearlyReports = async ({ year }) => {
         throw error
     }
 }
+
+
+
+export const fetchEmpSummary = async (id: string) => {
+    try {
+        const response = await BaseService.get(`/employee-summary/${id}`)
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching payroll report:', error)
+        throw error
+    }
+}

@@ -1,1 +1,0 @@
-import{j as s,c as n,W as c}from"./index-BhssGgIZ.js";const g="/assets/logo-HA6bVy_O.png",d=o=>{const{type:i="full",mode:m="light",className:e,imgClass:l,style:t,logoWidth:a="auto"}=o;return s.jsx("div",{className:n("logo",e),style:{...t,width:a},children:s.jsx("img",{className:l,src:g,alt:`${c} logo`,style:{border:"none",outline:"none",boxShadow:"none"}})})};export{d as L};

@@ -29,6 +29,8 @@ const paymentMethodOptions: OptionType[] = [
     { label: 'ADVANCE', value: 'advance' },
     { label: 'MASHREQ CARD', value: 'masherq_card' },
     { label: 'ATHEER PLUS', value: 'atheer_plus' },
+    {label :'CREDIT',value:'credit'}
+
 ]
 
 const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({

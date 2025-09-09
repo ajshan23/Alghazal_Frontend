@@ -43,6 +43,8 @@ const paymentMethodOptions = [
     { label: 'ADIB', value: 'adib' },
     { label: 'Cash', value: 'cash' },
     { label: 'MASHREQ CARD', value: 'masherq_card' },
+    {label :'CREDIT',value:'credit'}
+
 ]
 
 const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props, ref) => {
