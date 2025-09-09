@@ -123,13 +123,13 @@ const appsRoute: Routes = [
         key: 'appsQuotation.quotationNew',
         path: `${APP_PREFIX_PATH}/quotation-new/:projectId`,
         component: lazy(() => import('@/views/quotation/quotationcreation/QuotationCreations')),
-        authority: [ADMIN, USER,SUPERADMIN],
+        authority: [ADMIN, USER,SUPERADMIN,ENGINEER],
     },
     {
         key: 'appsQuotationEdit.quotationEdit',
         path: `${APP_PREFIX_PATH}/quotation-edit/:projectId/:quotationId`,
         component: lazy(() => import('@/views/quotation/quotationcreation/QuotationCreations')),
-        authority: [ADMIN, USER,SUPERADMIN],
+        authority: [ADMIN, USER,SUPERADMIN,ENGINEER],
     },
     {
         key: 'apps.ongoingworks',
@@ -141,7 +141,7 @@ const appsRoute: Routes = [
         key: 'appsQuotationView.QuotationView',
         path: `${APP_PREFIX_PATH}/quotation-view/:projectId`,
         component: lazy(() => import('@/views/quotation/quotationview/QuotationView')),
-        authority: [ADMIN, USER,SUPERADMIN],
+        authority: [ADMIN, USER,SUPERADMIN,ENGINEER],
     },
     {
         key: 'appsPublicView.PublicView',
@@ -165,7 +165,7 @@ const appsRoute: Routes = [
         key: 'apps.workprogress',
         path: `${APP_PREFIX_PATH}/workprogress/:projectId`,
         component: lazy(() => import('@/views/workprogress/progress/progress/Progress')),
-        authority: [ADMIN, USER,SUPERADMIN],
+        authority: [ADMIN, USER,SUPERADMIN,ENGINEER],
     },
     {
         key: 'apps.teamAssign',
