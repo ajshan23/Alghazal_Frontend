@@ -96,13 +96,37 @@ const UserMonthlyAttendancePage = () => {
         month,
         year
       );
-      setAttendance(response.data.data);
+      
+      // Handle different response structures safely
+      let attendanceData = [];
+      
+      if (response.data && Array.isArray(response.data)) {
+        // If response.data is already an array
+        attendanceData = response.data;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        // If response.data.data is an array
+        attendanceData = response.data.data;
+      } else if (response.data && Array.isArray(response.data.attendance)) {
+        // If response.data.attendance is an array
+        attendanceData = response.data.attendance;
+      } else if (Array.isArray(response)) {
+        // If the response itself is an array
+        attendanceData = response;
+      } else {
+        // Default to empty array if structure is unexpected
+        console.error('Unexpected API response structure:', response);
+        attendanceData = [];
+      }
+      
+      setAttendance(attendanceData);
     } catch (error: any) {
       toast.push(
         <Notification title="Error fetching attendance" type="danger">
           {error.message}
         </Notification>
       );
+      // Reset attendance to empty array on error
+      setAttendance([]);
     } finally {
       setLoading(false);
     }
@@ -122,7 +146,7 @@ const UserMonthlyAttendancePage = () => {
   };
 
   const exportToExcel = () => {
-    if (attendance.length === 0) {
+    if (!attendance || attendance.length === 0) {
       toast.push(
         <Notification title="No data to export" type="warning">
           There are no attendance records to export
@@ -163,13 +187,16 @@ const UserMonthlyAttendancePage = () => {
   }, [selectedUser, month, year]);
 
   const renderCalendar = () => {
+    // Ensure attendance is always treated as an array
+    const safeAttendance = Array.isArray(attendance) ? attendance : [];
+    
     const startOfMonth = dayjs().year(year).month(month - 1).startOf('month');
     const endOfMonth = dayjs().year(year).month(month - 1).endOf('month');
     const daysInMonth = endOfMonth.date();
     const startDay = startOfMonth.day();
 
     const attendanceMap = new Map<string, AttendanceRecord>();
-    attendance.forEach(record => {
+    safeAttendance.forEach(record => {
       const dateStr = dayjs(record.date).format('YYYY-MM-DD');
       attendanceMap.set(dateStr, record);
     });

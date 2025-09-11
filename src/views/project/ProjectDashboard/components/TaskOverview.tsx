@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import Card from '@/components/ui/Card'
 import Segment from '@/components/ui/Segment'
 import Badge from '@/components/ui/Badge'
