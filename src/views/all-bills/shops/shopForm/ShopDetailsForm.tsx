@@ -70,13 +70,10 @@ const ShopDetailsForm = forwardRef<FormikRef, ShopDetailsForm>((props, ref) => {
         shopName: Yup.string().required('Shop Name is required'),
         shopNo: Yup.string().required('Shop Number is required'),
         address: Yup.string().required('Address is required'),
-        vat: Yup.string().required('VAT is required'),
-
-        ownerName: Yup.string().required('Owner Name is required'),
+        vat: Yup.string(), // Made optional - no .required()
+        ownerName: Yup.string(), // Made optional - no .required()
         ownerEmail: Yup.string()
-            .email('Invalid email')
-            .required('Owner Email is required'),
-
+            .email('Invalid email format'), // Made optional - no .required()
         contact: Yup.string().required('Contact number is required'),
     })
 
@@ -220,7 +217,7 @@ const ShopDetailsForm = forwardRef<FormikRef, ShopDetailsForm>((props, ref) => {
                                         </FormItem>
 
                                         <FormItem
-                                            label="VAT"
+                                            label="VAT (Optional)"
                                             invalid={
                                                 !!errors.vat && touched.vat
                                             }
@@ -230,7 +227,7 @@ const ShopDetailsForm = forwardRef<FormikRef, ShopDetailsForm>((props, ref) => {
                                                 type="text"
                                                 autoComplete="off"
                                                 name="vat"
-                                                placeholder="VAT Number"
+                                                placeholder="VAT Number (Optional)"
                                                 component={Input}
                                                 validateOnBlur
                                             />
@@ -239,11 +236,11 @@ const ShopDetailsForm = forwardRef<FormikRef, ShopDetailsForm>((props, ref) => {
 
                                     <AdaptableCard divider className="mb-4">
                                         <h5 className="mb-4">
-                                            Owner Information
+                                            Owner Information (Optional)
                                         </h5>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormItem
-                                                label="Owner Name"
+                                                label="Owner Name (Optional)"
                                                 invalid={
                                                     !!errors.ownerName &&
                                                     touched.ownerName
@@ -254,14 +251,14 @@ const ShopDetailsForm = forwardRef<FormikRef, ShopDetailsForm>((props, ref) => {
                                                     type="text"
                                                     autoComplete="off"
                                                     name="ownerName"
-                                                    placeholder="Owner Name"
+                                                    placeholder="Owner Name (Optional)"
                                                     component={Input}
                                                     validateOnBlur
                                                 />
                                             </FormItem>
 
                                             <FormItem
-                                                label="Owner Email"
+                                                label="Owner Email (Optional)"
                                                 invalid={
                                                     !!errors.ownerEmail &&
                                                     touched.ownerEmail
@@ -272,7 +269,7 @@ const ShopDetailsForm = forwardRef<FormikRef, ShopDetailsForm>((props, ref) => {
                                                     type="email"
                                                     autoComplete="off"
                                                     name="ownerEmail"
-                                                    placeholder="Owner Email"
+                                                    placeholder="Owner Email (Optional)"
                                                     component={Input}
                                                     validateOnBlur
                                                 />
