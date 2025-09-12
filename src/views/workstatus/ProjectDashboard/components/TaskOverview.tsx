@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import Card from '@/components/ui/Card'
 import Segment from '@/components/ui/Segment'
 import Badge from '@/components/ui/Badge'
@@ -6,7 +5,6 @@ import Loading from '@/components/shared/Loading'
 import Chart from '@/components/shared/Chart'
 import { COLORS } from '@/constants/chart.constant'
 import isEmpty from 'lodash/isEmpty'
-import { useAppSelector } from '../store'
 
 type ProjectOverviewChart = {
     onGoing: number
@@ -24,6 +22,9 @@ type TaskOverviewProps = {
         chart?: Record<string, ProjectOverviewChart>
     }
     className?: string
+    timeRange?: string
+    onTimeRangeChange?: (range: string) => void
+    loading?: boolean
 }
 
 type ChartLegendProps = {
@@ -50,67 +51,60 @@ const ChartLegend = ({
     )
 }
 
-const TaskOverview = ({ data = {}, className }: TaskOverviewProps) => {
-    const [timeRange, setTimeRange] = useState(['weekly'])
-
-    const [repaint, setRepaint] = useState(false)
-
-    const sideNavCollapse = useAppSelector(
-        (state) => state.theme.layout.sideNavCollapse,
-    )
-
-    useEffect(() => {
-        setRepaint(true)
-        const timer1 = setTimeout(() => setRepaint(false), 300)
-
-        return () => {
-            clearTimeout(timer1)
+const TaskOverview = ({ 
+    data = {}, 
+    className, 
+    timeRange = 'weekly',
+    onTimeRangeChange,
+    loading = false
+}: TaskOverviewProps) => {
+    const handleTimeRangeChange = (newRange: string[]) => {
+        if (onTimeRangeChange && newRange.length > 0) {
+            onTimeRangeChange(newRange[0])
         }
-    }, [data, sideNavCollapse])
+    }
 
     return (
         <Card className={className}>
             <div className="flex sm:flex-row flex-col md:items-center justify-between mb-6 gap-4">
                 <h4>Task Overview</h4>
                 <Segment
-                    value={timeRange}
+                    value={[timeRange]}
                     size="sm"
-                    onChange={(val: string | string[]) =>
-                        setTimeRange(val as string[])
-                    }
+                    onChange={handleTimeRangeChange}
                 >
                     <Segment.Item value="monthly">Monthly</Segment.Item>
                     <Segment.Item value="weekly">Weekly</Segment.Item>
                     <Segment.Item value="daily">Daily</Segment.Item>
                 </Segment>
             </div>
-            {!isEmpty(data) && !repaint && data.chart && (
+            {!isEmpty(data) && !loading && data.chart && data.chart[timeRange] && (
                 <>
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <ChartLegend
                                 showBadge={false}
                                 label="Total Tasks"
-                                value={data.chart[timeRange[0]].total}
+                                value={data.chart[timeRange].total}
                             />
                         </div>
                         <div className="flex gap-x-6">
                             <ChartLegend
                                 badgeClass="bg-indigo-600"
-                                label={data.chart[timeRange[0]].series[0].name}
-                                value={data.chart[timeRange[0]].onGoing}
+                                label={data.chart[timeRange].series[0].name}
+                                value={data.chart[timeRange].onGoing}
                             />
                             <ChartLegend
                                 badgeClass="bg-emerald-500"
-                                label={data.chart[timeRange[0]].series[1].name}
-                                value={data.chart[timeRange[0]].finished}
+                                label={data.chart[timeRange].series[1].name}
+                                value={data.chart[timeRange].finished}
                             />
                         </div>
                     </div>
                     <div>
                         <Chart
-                            series={data.chart[timeRange[0]].series}
-                            xAxis={data.chart[timeRange[0]].range}
+                            series={data.chart[timeRange].series}
+                            xAxis={data.chart[timeRange].range}
                             type="bar"
                             customOptions={{
                                 colors: [COLORS[0], COLORS[2]],
@@ -120,8 +114,8 @@ const TaskOverview = ({ data = {}, className }: TaskOverviewProps) => {
                     </div>
                 </>
             )}
-            <Loading loading={repaint} type="cover">
-                {repaint && <div className="h-[300px]" />}
+            <Loading loading={loading} type="cover">
+                {loading && <div className="h-[300px]" />}
             </Loading>
         </Card>
     )

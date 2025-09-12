@@ -7,7 +7,7 @@ import reducer, {
 import { injectReducer } from '@/store'
 import Loading from '@/components/shared/Loading'
 import ProjectDashboardHeader from './components/ProjectDashboardHeader'
-import TaskOverview from './components/TaskOverview'
+
 
 import Projects from './components/Projects'
 import Schedule from './components/Schedule'

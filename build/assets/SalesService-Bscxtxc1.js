@@ -1,1 +1,0 @@
-import{ao as t}from"./index-C2OGU-1w.js";async function s(e){return t.fetchData({url:"/sales/products",method:"post",data:e})}async function r(e){return t.fetchData({url:"/sales/products/delete",method:"delete",data:e})}export{s as a,r as b};
