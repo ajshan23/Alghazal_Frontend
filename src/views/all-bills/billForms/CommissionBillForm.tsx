@@ -20,6 +20,7 @@ type InitialData = {
     billDate?: string
     amount: number | string
     paymentMethod?: string
+    remarks?: string
 }
 
 export type FormModel = InitialData
@@ -43,8 +44,7 @@ const paymentMethodOptions = [
     { label: 'ADIB', value: 'adib' },
     { label: 'Cash', value: 'cash' },
     { label: 'MASHREQ CARD', value: 'masherq_card' },
-    {label :'CREDIT',value:'credit'}
-
+    { label: 'CREDIT', value: 'credit' }
 ]
 
 const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props, ref) => {
@@ -55,6 +55,7 @@ const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props
             billDate: new Date().toISOString().split('T')[0],
             amount: '',
             paymentMethod: 'cash',
+            remarks: '',
         },
         onFormSubmit,
         onDiscard,
@@ -67,6 +68,7 @@ const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props
             .typeError('Amount must be a number')
             .required('Amount is required'),
         paymentMethod: Yup.string().required('Payment method is required'),
+        remarks: Yup.string().max(500, 'Remarks cannot exceed 500 characters'),
     })
 
     return (
@@ -78,6 +80,7 @@ const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props
                 billDate: initialData.billDate || new Date().toISOString().split('T')[0],
                 amount: initialData.amount ?? '',
                 paymentMethod: initialData.paymentMethod || 'cash',
+                remarks: initialData.remarks || '',
             }}
             validationSchema={validationSchema}
             onSubmit={async (values, { setSubmitting }) => {
@@ -86,6 +89,9 @@ const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props
                 formData.append('billDate', values.billDate)
                 formData.append('amount', values.amount.toString())
                 formData.append('paymentMethod', values.paymentMethod)
+                if (values.remarks) {
+                    formData.append('remarks', values.remarks)
+                }
 
                 await onFormSubmit(formData, setSubmitting)
             }}
@@ -180,6 +186,29 @@ const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props
                                                 )}
                                             </Field>
                                         </FormItem>
+
+                                        <div className="md:col-span-2">
+                                            <FormItem
+                                                label="Remarks"
+                                                invalid={!!errors.remarks && touched.remarks}
+                                                errorMessage={errors.remarks as string}
+                                            >
+                                                <Field name="remarks">
+                                                    {({ field, form }: FieldProps) => (
+                                                        <Input
+                                                            textArea
+                                                            rows={3}
+                                                            autoComplete="off"
+                                                            placeholder="Enter any additional remarks or notes..."
+                                                            {...field}
+                                                            onChange={(e) =>
+                                                                form.setFieldValue(field.name, e.target.value)
+                                                            }
+                                                        />
+                                                    )}
+                                                </Field>
+                                            </FormItem>
+                                        </div>
                                     </div>
                                 </AdaptableCard>
                             </div>

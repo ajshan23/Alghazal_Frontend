@@ -649,16 +649,33 @@ const ProjectView = () => {
           });
         }
 
-        if (['quotation_sent', 'lpo_received', 'work_started', 'in_progress', 'work_completed', 'invoice_sent'].includes(status)) {
-          statusDocuments.push({
-            type: 'lpo',
-            title: 'LPO',
-            route: `/app/lpo/${id}`,
-            exists: hasLPO,
-            viewRoute: hasLPO ? `/app/lpo-view/${id}` : undefined,
-            roles: ['finance', 'super_admin', 'admin','engineer'],
-          });
-        }
+        if (['quotation_sent', 'lpo_received', 'work_started', 'in_progress', 'work_completed', 'invoice_sent','team_assigned'].includes(status)) {
+  // For engineers, only add LPO document if it exists (view-only)
+  // For other roles, add it regardless (can add or view)
+  if (role === 'engineer') {
+    if (hasLPO) {
+      statusDocuments.push({
+        type: 'lpo',
+        title: 'LPO',
+        route: `/app/lpo/${id}`,
+        exists: true,
+        viewRoute: `/app/lpo-view/${id}`,
+        roles: ['finance', 'super_admin', 'admin', 'engineer'],
+      });
+    }
+    // If hasLPO is false, don't add the document at all for engineers
+  } else {
+    // For non-engineers, add regardless of existence (can create or view)
+    statusDocuments.push({
+      type: 'lpo',
+      title: 'LPO',
+      route: `/app/lpo/${id}`,
+      exists: hasLPO,
+      viewRoute: hasLPO ? `/app/lpo-view/${id}` : undefined,
+      roles: ['finance', 'super_admin', 'admin', 'engineer'],
+    });
+  }
+}
 
         if (['lpo_received', 'work_started', 'in_progress', 'work_completed', 'invoice_sent', "team_assigned"].includes(status)) {
           statusDocuments.push({

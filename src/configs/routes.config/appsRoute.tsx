@@ -165,7 +165,7 @@ const appsRoute: Routes = [
         key: 'apps.lpo',
         path: `${APP_PREFIX_PATH}/lpo-view/:id`,
         component: lazy(() => import('@/views/lpo/lpoView/lpoView')),
-        authority: [ADMIN, USER,SUPERADMIN],
+        authority: [ADMIN, USER,SUPERADMIN,ENGINEER],
     },
     {
         key: 'apps.workprogress',
@@ -183,7 +183,7 @@ const appsRoute: Routes = [
         key: 'apps.workcompletionreport',
         path: `${APP_PREFIX_PATH}/workcompletionreport/:projectId`,
         component: lazy(() => import('@/views/workcompletion/Completionview/CompletionView')),
-        authority: [ADMIN, USER,SUPERADMIN],
+        authority: [ADMIN, USER,SUPERADMIN,ENGINEER],
     },
     {
         key: 'apps.invoice',

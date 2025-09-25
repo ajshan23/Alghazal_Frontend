@@ -8,7 +8,8 @@ import { addBill, editBill, fetchBillById } from '../api/api'
 const defaultBillData = {
     billType: 'commission',
     billDate: new Date().toISOString().split('T')[0], // Default to today's date
-    amount: ''
+    amount: '',
+    remarks:'',
 }
 
 const NewCommissionBill = () => {
@@ -38,7 +39,9 @@ const NewCommissionBill = () => {
                 setInitialData({
                     billType: response.data.billType || 'commission',
                     billDate: response.data.billDate || defaultBillData.billDate,
-                    amount: response.data.amount || ''
+                    amount: response.data.amount || '',
+                    remarks:response.data.remarks
+
                 })
                 setError(null)
             } catch (error: any) {

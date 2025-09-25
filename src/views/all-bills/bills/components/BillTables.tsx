@@ -607,6 +607,13 @@ const BillTable = ({
                 commonColumns[0], // S.NO
                 commonColumns[1], // DATE
                 commonColumns[3], // Amount
+                 {
+                    header: 'REMARK',
+                    accessorKey: 'remarks',
+                    cell: (props) => (
+                        <span>{props.row.original.remarks || 'N/A'}</span>
+                    ),
+                },
                 commonColumns[4], // Action
             ]
         }

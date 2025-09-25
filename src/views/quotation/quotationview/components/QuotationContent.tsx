@@ -79,7 +79,7 @@ const QuotationContent = () => {
     const [error, setError] = useState<string | null>(null)
     const [pdfLoading, setPdfLoading] = useState(false)
     const navigate = useNavigate()
-
+    const [role,setRole]=useState(null);
     useEffect(() => {
         const fetchQuotationData = async () => {
             try {
@@ -99,6 +99,8 @@ const QuotationContent = () => {
         }
 
         fetchQuotationData()
+        const user=JSON.parse(localStorage.getItem("user"));
+    setRole(user.role)
     }, [projectId])
  const handleSendEmail = async () => {
   if (!data) return;
@@ -453,14 +455,14 @@ const QuotationContent = () => {
                                     >
                                         {emailLoading ? 'Sending Email...' : 'Send Email'}
                                     </Button>
-                                    <Button
+                                    {role!=="engineer"&&<Button
                                         variant="solid"
                                         icon={<HiPencil />}
                                         onClick={() => handleEdit(data)}
                                         className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                                     >
                                         Edit Quotation
-                                    </Button>
+                                    </Button>}
                                 </div>
                             </div>
                         </div>

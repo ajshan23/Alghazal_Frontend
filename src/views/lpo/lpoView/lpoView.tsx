@@ -72,7 +72,7 @@ const LPODetailView = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-
+  const [role,setRole]=useState(null)
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -97,6 +97,9 @@ const LPODetailView = () => {
       return;
     }
     fetchData();
+    const user=JSON.parse(localStorage.getItem("user"));
+    setRole(user.role)
+
   }, [id]);
 
   const handleGoBack = () => {
@@ -240,14 +243,14 @@ const LPODetailView = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
+                 {role!=="engineer" &&<Button
                     variant="solid"
                     onClick={handleEdit}
                     icon={<HiPencil />}
                     className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     Edit LPO
-                  </Button>
+                  </Button>}
                   <Button
                     variant="solid"
                     loading={downloadingPdf}
