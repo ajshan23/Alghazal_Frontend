@@ -22,10 +22,10 @@ const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
     const [selectedHour, setSelectedHour] = useState<number>(8) // Default to 8 hours
     const [validationError, setValidationError] = useState<string | null>(null)
 
-    const hourOptions = Array.from({ length: 24 }, (_, i) => ({
-        label: `${i.toString().padStart(2, '0')}:00`,
-        value: i,
-    }))
+    const hourOptions = Array.from({ length: 24 }, (_, i) => ([
+        { label: `${i.toString().padStart(2, '0')}:00`, value: `${i}:00` },
+        { label: `${i.toString().padStart(2, '0')}:30`, value: `${i}:30` }
+    ])).flat();
 
     // Clear form when modal closes
     useEffect(() => {
@@ -65,7 +65,7 @@ const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
             <h5 className="mb-4">
                 {modalType === 'present' ? 'Mark Present' : 'Mark Absent'}
             </h5>
-            
+
             {modalType === 'present' ? (
                 <>
                     <p className="mb-4">
@@ -82,7 +82,7 @@ const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                         }}
                         className={validationError ? 'border-red-500' : ''}
                     />
-                    
+
                     {validationError && (
                         <p className="mt-2 text-red-500 text-sm">{validationError}</p>
                     )}
