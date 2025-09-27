@@ -14,6 +14,7 @@ import ConfirmDialog from '@/components/shared/ConfirmDialog'
 type FormikRef = FormikProps<any>
 
 const RoleOptions = [
+    { label: 'Super Admin', value: 'super_admin' },
     { label: 'Admin', value: 'admin' },
     { label: 'Engineer', value: 'engineer' },
     { label: 'Finance', value: 'finance' },
@@ -21,6 +22,9 @@ const RoleOptions = [
     { label: 'Worker', value: 'worker' },
     { label: 'Supervisor', value: 'supervisor' },
 ]
+
+// Define which roles DON'T require salary (based on backend logic)
+const ROLES_NOT_REQUIRING_SALARY = ['super_admin', 'admin']
 
 type InitialData = {
     firstName?: string
@@ -69,7 +73,7 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
             password: '',
             profileImage: '',
             signatureImage: '',
-            salary: 0,
+            salary: undefined,
             accountNumber: '',
             emiratesId: '',
             emiratesIdDocument: '',
@@ -105,17 +109,29 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
     }, [initialData])
 
     const validationSchema = Yup.object().shape({
-        firstName: Yup.string().required('First Name is required'),
-        lastName: Yup.string().required('Last Name is required'),
+        firstName: Yup.string().required('First name is required'),
+        lastName: Yup.string().required('Last name is required'),
         email: Yup.string().email('Invalid email').required('Email is required'),
-        role: Yup.string(), // Made optional
         password: type === 'new' 
             ? Yup.string().required('Password is required') 
             : Yup.string(),
+        role: Yup.string(),
         phoneNumbers: Yup.array()
             .of(Yup.string().matches(/^[0-9]+$/, 'Phone number must be digits only')),
+        // Updated salary validation to match backend logic
         salary: Yup.number()
-            .min(0, 'Salary cannot be negative'),
+            .nullable()
+            .transform((value, originalValue) => {
+                // Convert empty string to null
+                return originalValue === '' ? null : value;
+            })
+            .when('role', {
+                is: (role: string) => role && !ROLES_NOT_REQUIRING_SALARY.includes(role),
+                then: (schema) => schema
+                    .required('Salary is required for this role')
+                    .min(0.01, 'Salary must be greater than 0'),
+                otherwise: (schema) => schema.nullable()
+            }),
         accountNumber: Yup.string(),
         emiratesId: Yup.string(),
         passportNumber: Yup.string(),
@@ -133,80 +149,140 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                     : typeof initialData.phoneNumbers === 'string'
                         ? JSON.parse(initialData.phoneNumbers.replace(/'/g, '"')) 
                         : [''],
-                salary: initialData.salary || 0,
+                salary: initialData.salary || '',
                 iBANNumber: initialData.iBANNumber || '',
                 address: initialData.address || ''
             }}
             validationSchema={validationSchema}
             onSubmit={async (values, { setSubmitting, setErrors }) => {
-                const formData = new FormData()
-                
-                formData.append('firstName', values.firstName || '')
-                formData.append('lastName', values.lastName || '')
-                formData.append('email', values.email || '')
-                
-                if (values.role) formData.append('role', values.role)
-                if (values.password) formData.append('password', values.password)
-                if (values.address) formData.append('address', values.address)
-
-                let phoneNumbersArray = values.phoneNumbers || []
-                if (!Array.isArray(phoneNumbersArray)) {
-                    phoneNumbersArray = [phoneNumbersArray]
-                }
-                const filteredPhoneNumbers = phoneNumbersArray.filter(num => num && num.trim().length > 0)
-                if (filteredPhoneNumbers.length > 0) {
-                    formData.append('phoneNumbers', JSON.stringify(filteredPhoneNumbers))
-                }
-
-                // Add salary for all roles if it has value
-                if (values.salary !== undefined && values.salary !== null) {
-                    formData.append('salary', values.salary.toString())
-                }
-
-                if (values.accountNumber) formData.append('accountNumber', values.accountNumber)
-                if (values.emiratesId) formData.append('emiratesId', values.emiratesId)
-                if (values.passportNumber) formData.append('passportNumber', values.passportNumber)
-                if (values.iBANNumber) formData.append('iBANNumber', values.iBANNumber)
-
-                if (profileImageFile) formData.append('profileImage', profileImageFile)
-                if (signatureImageFile) formData.append('signatureImage', signatureImageFile)
-                if (emiratesIdFile) formData.append('emiratesIdDocument', emiratesIdFile)
-                if (passportFile) formData.append('passportDocument', passportFile)
-
-                if (type === 'edit') {
-                    if (!profileImageFile && existingFiles.profileImage) {
-                        formData.append('profileImageUrl', existingFiles.profileImage)
-                    }
-                    if (!signatureImageFile && existingFiles.signatureImage) {
-                        formData.append('signatureImageUrl', existingFiles.signatureImage)
-                    }
-                    if (!emiratesIdFile && existingFiles.emiratesIdDocument) {
-                        formData.append('emiratesIdDocumentUrl', existingFiles.emiratesIdDocument)
-                    }
-                    if (!passportFile && existingFiles.passportDocument) {
-                        formData.append('passportDocumentUrl', existingFiles.passportDocument)
-                    }
-
-                    if (!values.profileImage && existingFiles.profileImage) {
-                        formData.append('removeProfileImage', 'true')
-                    }
-                    if (!values.signatureImage && existingFiles.signatureImage) {
-                        formData.append('removeSignatureImage', 'true')
-                    }
-                    if (!values.emiratesIdDocument && existingFiles.emiratesIdDocument) {
-                        formData.append('removeEmiratesIdDocument', 'true')
-                    }
-                    if (!values.passportDocument && existingFiles.passportDocument) {
-                        formData.append('removePassportDocument', 'true')
-                    }
-                }
-
                 try {
+                    // Frontend validation matching backend logic
+                    if (!values.email || !values.firstName || !values.lastName) {
+                        setErrors({
+                            email: !values.email ? 'Email is required' : undefined,
+                            firstName: !values.firstName ? 'First name is required' : undefined,
+                            lastName: !values.lastName ? 'Last name is required' : undefined
+                        });
+                        setSubmitting(false);
+                        return;
+                    }
+
+                    if (type === 'new' && !values.password) {
+                        setErrors({ password: 'Password is required' });
+                        setSubmitting(false);
+                        return;
+                    }
+
+                    // Validate salary only if role is provided and not admin/super_admin
+                    if (values.role && !ROLES_NOT_REQUIRING_SALARY.includes(values.role) && 
+                        (values.salary === undefined || values.salary === null || values.salary === '')) {
+                        setErrors({ salary: 'Salary is required for this role' });
+                        setSubmitting(false);
+                        return;
+                    }
+
+                    // Validate phone numbers format
+                    let phoneNumbersArray = values.phoneNumbers || []
+                    if (!Array.isArray(phoneNumbersArray)) {
+                        phoneNumbersArray = [phoneNumbersArray]
+                    }
+                    const filteredPhoneNumbers = phoneNumbersArray.filter(num => num && num.trim().length > 0)
+                    
+                    // Validate phone numbers contain only digits
+                    for (let i = 0; i < filteredPhoneNumbers.length; i++) {
+                        if (!/^[0-9]+$/.test(filteredPhoneNumbers[i])) {
+                            const phoneErrors: any = {}
+                            phoneErrors[i] = 'Phone number must be digits only'
+                            setErrors({ phoneNumbers: phoneErrors });
+                            setSubmitting(false);
+                            return;
+                        }
+                    }
+
+                    const formData = new FormData()
+                    
+                    // Add required fields
+                    formData.append('firstName', values.firstName)
+                    formData.append('lastName', values.lastName)
+                    formData.append('email', values.email)
+                    
+                    if (type === 'new' && values.password) {
+                        formData.append('password', values.password)
+                    }
+                    if (type === 'edit' && values.password) {
+                        formData.append('password', values.password)
+                    }
+
+                    // Add optional fields only if provided
+                    if (filteredPhoneNumbers.length > 0) {
+                        formData.append('phoneNumbers', JSON.stringify(filteredPhoneNumbers))
+                    }
+                    
+                    if (values.role) formData.append('role', values.role)
+                    
+                    // Add salary based on backend logic
+                    if (values.salary !== undefined && values.salary !== null && values.salary !== '' && 
+                        !ROLES_NOT_REQUIRING_SALARY.includes(values.role || 'worker')) {
+                        const salaryValue = typeof values.salary === 'string' ? parseFloat(values.salary) : values.salary
+                        if (!isNaN(salaryValue)) {
+                            formData.append('salary', salaryValue.toString())
+                        }
+                    }
+
+                    if (values.accountNumber) formData.append('accountNumber', values.accountNumber)
+                    if (values.emiratesId) formData.append('emiratesId', values.emiratesId)
+                    if (values.passportNumber) formData.append('passportNumber', values.passportNumber)
+                    if (values.iBANNumber) formData.append('iBANNumber', values.iBANNumber)
+                    if (values.address) formData.append('address', values.address)
+
+                    // Handle file uploads
+                    if (profileImageFile) formData.append('profileImage', profileImageFile)
+                    if (signatureImageFile) formData.append('signatureImage', signatureImageFile)
+                    if (emiratesIdFile) formData.append('emiratesIdDocument', emiratesIdFile)
+                    if (passportFile) formData.append('passportDocument', passportFile)
+
+                    // Handle existing files for edit mode
+                    if (type === 'edit') {
+                        if (!profileImageFile && existingFiles.profileImage) {
+                            formData.append('profileImageUrl', existingFiles.profileImage)
+                        }
+                        if (!signatureImageFile && existingFiles.signatureImage) {
+                            formData.append('signatureImageUrl', existingFiles.signatureImage)
+                        }
+                        if (!emiratesIdFile && existingFiles.emiratesIdDocument) {
+                            formData.append('emiratesIdDocumentUrl', existingFiles.emiratesIdDocument)
+                        }
+                        if (!passportFile && existingFiles.passportDocument) {
+                            formData.append('passportDocumentUrl', existingFiles.passportDocument)
+                        }
+
+                        // Handle file removal
+                        if (!values.profileImage && existingFiles.profileImage) {
+                            formData.append('removeProfileImage', 'true')
+                        }
+                        if (!values.signatureImage && existingFiles.signatureImage) {
+                            formData.append('removeSignatureImage', 'true')
+                        }
+                        if (!values.emiratesIdDocument && existingFiles.emiratesIdDocument) {
+                            formData.append('removeEmiratesIdDocument', 'true')
+                        }
+                        if (!values.passportDocument && existingFiles.passportDocument) {
+                            formData.append('removePassportDocument', 'true')
+                        }
+                    }
+
                     await onFormSubmit(formData, setSubmitting)
                 } catch (error: any) {
                     setSubmitting(false)
+                    // Handle different error types
                     if (error.message?.includes("Email already in use")) {
-                        setErrors({ email: "This email is already registered" })
+                        setErrors({ email: "Email already in use" })
+                    } else if (error.message?.includes("Salary is required")) {
+                        setErrors({ salary: "Salary is required for this role" })
+                    } else if (error.message?.includes("Invalid phone numbers format")) {
+                        setErrors({ phoneNumbers: "Invalid phone numbers format" })
+                    } else {
+                        console.error('Form submission error:', error)
                     }
                 }
             }}
@@ -280,6 +356,9 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                     setFieldValue('passportDocument', '')
                     setExistingFiles(prev => ({ ...prev, passportDocument: '' }))
                 }
+
+                // Check if current role requires salary (all roles except super_admin and admin)
+                const roleRequiresSalary = values.role && !ROLES_NOT_REQUIRING_SALARY.includes(values.role)
 
                 return (
                     <Form>
@@ -379,7 +458,7 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                         </FormItem>
 
                                         <FormItem
-                                            label="Salary"
+                                            label={roleRequiresSalary ? "Salary *" : "Salary"}
                                             invalid={!!errors.salary && touched.salary}
                                             errorMessage={errors.salary as string}
                                         >
@@ -387,11 +466,21 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                                 type="number"
                                                 autoComplete="off"
                                                 name="salary"
-                                                placeholder="Salary"
+                                                placeholder={roleRequiresSalary ? "Enter salary (required)" : "Enter salary (optional)"}
                                                 component={Input}
                                                 min="0"
                                                 step="0.01"
                                             />
+                                            {roleRequiresSalary && (
+                                                <div className="mt-1 text-xs text-gray-500">
+                                                    Salary is required and must be greater than 0 for this role
+                                                </div>
+                                            )}
+                                            {!roleRequiresSalary && values.role && (
+                                                <div className="mt-1 text-xs text-gray-500">
+                                                    Salary is optional for {values.role} role
+                                                </div>
+                                            )}
                                         </FormItem>
                                     </AdaptableCard>
 
@@ -417,7 +506,7 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
                                                                 <Field
                                                                     name={`phoneNumbers.${index}`}
                                                                     component={Input}
-                                                                    placeholder="Phone Number"
+                                                                    placeholder="Phone Number (digits only)"
                                                                     value={phoneNumber || ''}
                                                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                                         const newPhoneNumbers = [...values.phoneNumbers]
@@ -652,7 +741,6 @@ const UserForm = forwardRef<FormikRef, UserForm>((props, ref) => {
 })
 
 UserForm.displayName = 'UserForm'
-
 const DeleteProductButton = ({ onDelete }: { onDelete: OnDelete }) => {
     const [dialogOpen, setDialogOpen] = useState(false)
 

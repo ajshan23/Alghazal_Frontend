@@ -1,8 +1,29 @@
 import BaseService from "@/services/BaseService"
-
-export const fetchUser = async () => {
+export const fetchUser = async (params?: { 
+    page?: number; 
+    limit?: number; 
+    search?: string 
+}) => {
     try {
-        const response = await BaseService.get(`/user`)
+        // Build query parameters
+        const queryParams = new URLSearchParams()
+        
+        if (params?.page) {
+            queryParams.append('page', params.page.toString())
+        }
+        
+        if (params?.limit) {
+            queryParams.append('limit', params.limit.toString())
+        }
+        
+        if (params?.search && params.search.trim()) {
+            queryParams.append('search', params.search.trim())
+        }
+        
+        // Construct the URL with query parameters
+        const url = `/user${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+        
+        const response = await BaseService.get(url)
         return response.data
     } catch (error) {
         console.error('Error fetching user:', error)
