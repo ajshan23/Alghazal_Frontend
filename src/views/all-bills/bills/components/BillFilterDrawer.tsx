@@ -418,8 +418,8 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
                                     {({ field, form }: FieldProps) => (
                                         <Select
                                             placeholder="Select Payment Method"
-                                            options={paymentMethodOptions}
-                                            value={paymentMethodOptions.find(
+                                            options={PaymentMethodOptions}
+                                            value={PaymentMethodOptions.find(
                                                 (m) => m.value === field.value,
                                             )}
                                             onChange={(option) =>
