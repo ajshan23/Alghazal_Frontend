@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Drawer } from '@/components/ui'
 import { Formik, Form, Field, FieldProps } from 'formik'
 import * as Yup from 'yup'
@@ -63,39 +63,35 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
     const [categoryOptions, setCategoryOptions] = useState<OptionType[]>([])
     const [vehicleOptions, setVehicleOptions] = useState<OptionType[]>([])
     const [userOptions, setUserOptions] = useState<OptionType[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    
+    const [isLoadingShops, setIsLoadingShops] = useState(false)
+    const [isLoadingCategories, setIsLoadingCategories] = useState(false)
+    const [isLoadingVehicles, setIsLoadingVehicles] = useState(false)
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false)
 
+    // Debounce utility
+    const useDebounce = (value: string, delay: number) => {
+        const [debouncedValue, setDebouncedValue] = useState(value)
+
+        useEffect(() => {
+            const handler = setTimeout(() => {
+                setDebouncedValue(value)
+            }, delay)
+
+            return () => {
+                clearTimeout(handler)
+            }
+        }, [value, delay])
+
+        return debouncedValue
+    }
+
+    // Initial load
     useEffect(() => {
-        const loadData = async () => {
+        const loadInitialData = async () => {
             try {
-                const [shopData, categoryData, vehicleData, userData] = await Promise.all([
-                    fetchShops(),
-                    fetchCategories(),
-                    fetchVehicles(),
-                    fetchUser()
-                ])
-
-                setShopOptions(
-                    shopData?.data?.shops?.map((shop: any) => ({
-                        label: `${shop.shopName} (${shop.shopNo})`,
-                        value: shop._id,
-                    })) || []
-                )
-
-                setCategoryOptions(
-                    categoryData?.data?.categories?.map((cat: any) => ({
-                        label: cat.name,
-                        value: cat._id,
-                    })) || []
-                )
-
-                setVehicleOptions(
-                    vehicleData?.data?.vehicles?.map((v: any) => ({
-                        label: v.vehicleNumber,
-                        value: v._id,
-                    })) || []
-                )
-
+                setIsLoadingUsers(true)
+                const userData = await fetchUser()
                 setUserOptions(
                     userData?.data?.users?.map((user: any) => ({
                         label: `${user.firstName} ${user.lastName}`,
@@ -103,37 +99,100 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
                     })) || []
                 )
             } catch (err) {
-                console.error('Error loading filter options', err)
+                console.error('Error loading users:', err)
             } finally {
-                setIsLoading(false)
+                setIsLoadingUsers(false)
             }
         }
 
-        loadData()
+        loadInitialData()
     }, [])
+
+    // Load shops with search
+    const loadShops = useCallback(async (searchTerm: string = '') => {
+        setIsLoadingShops(true)
+        try {
+            const shopData = await fetchShops(searchTerm, 1, 30)
+            setShopOptions(
+                shopData?.data?.shops?.map((shop: any) => ({
+                    label: shop.shopNo 
+                        ? `${shop.shopName} (${shop.shopNo})` 
+                        : shop.shopName,
+                    value: shop._id,
+                })) || []
+            )
+        } catch (err) {
+            console.error('Error loading shops:', err)
+        } finally {
+            setIsLoadingShops(false)
+        }
+    }, [])
+
+    // Load categories with search
+    const loadCategories = useCallback(async (searchTerm: string = '') => {
+        setIsLoadingCategories(true)
+        try {
+            const categoryData = await fetchCategories(searchTerm, 1, 30)
+            setCategoryOptions(
+                categoryData?.data?.categories?.map((cat: any) => ({
+                    label: cat.name,
+                    value: cat._id,
+                })) || []
+            )
+        } catch (err) {
+            console.error('Error loading categories:', err)
+        } finally {
+            setIsLoadingCategories(false)
+        }
+    }, [])
+
+    // Load vehicles with search
+    const loadVehicles = useCallback(async (searchTerm: string = '') => {
+        setIsLoadingVehicles(true)
+        try {
+            const vehicleData = await fetchVehicles(searchTerm, 1, 30)
+            setVehicleOptions(
+                vehicleData?.data?.vehicles?.map((v: any) => ({
+                    label: v.vehicleNumber,
+                    value: v._id,
+                })) || []
+            )
+        } catch (err) {
+            console.error('Error loading vehicles:', err)
+        } finally {
+            setIsLoadingVehicles(false)
+        }
+    }, [])
+
+    // Load initial data for shops, categories, and vehicles on mount
+    useEffect(() => {
+        if (isOpen) {
+            loadShops()
+            loadCategories()
+            loadVehicles()
+        }
+    }, [isOpen, loadShops, loadCategories, loadVehicles])
 
     const today = new Date()
 
-    // FIXED: Use vehicleNo from currentFilters (not vehicle)
     const initialValues = {
         startDate: currentFilters?.startDate || '',
         endDate: currentFilters?.endDate || '',
         category: currentFilters?.category || '',
         shop: currentFilters?.shop || '',
-        vehicleNo: currentFilters?.vehicleNo || '', // Use vehicleNo consistently
+        vehicleNo: currentFilters?.vehicleNo || '',
         paymentMethod: currentFilters?.paymentMethod || '',
         employee: currentFilters?.employee || '',
     }
 
     const handleSubmit = (values: any) => {
-        // FIXED: Only send non-empty filter values
         const filters: any = {};
         
         if (values.startDate) filters.startDate = values.startDate;
         if (values.endDate) filters.endDate = values.endDate;
         if (values.category) filters.category = values.category;
         if (values.shop) filters.shop = values.shop;
-        if (values.vehicleNo) filters.vehicle = values.vehicleNo; // Map to 'vehicle' for backend
+        if (values.vehicleNo) filters.vehicle = values.vehicleNo;
         if (values.paymentMethod) filters.paymentMethod = values.paymentMethod;
         if (values.employee) filters.employee = values.employee;
 
@@ -147,7 +206,6 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
 
     const handleReset = (resetForm: any) => {
         resetForm();
-        // Reset with empty filters
         onApplyFilters?.({
             startDate: '',
             endDate: '',
@@ -265,9 +323,15 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
                                                     option?.value || '',
                                                 )
                                             }
-                                            onClear={() => form.setFieldValue(field.name, '')}
+                                            onInputChange={(inputValue) => {
+                                                loadShops(inputValue)
+                                            }}
+                                            onClear={() => {
+                                                form.setFieldValue(field.name, '')
+                                                loadShops() // Reload all shops
+                                            }}
                                             isClearable
-                                            loading={isLoading}
+                                            loading={isLoadingShops}
                                         />
                                     )}
                                 </Field>
@@ -292,9 +356,15 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
                                                     option?.value || '',
                                                 )
                                             }
-                                            onClear={() => form.setFieldValue(field.name, '')}
+                                            onInputChange={(inputValue) => {
+                                                loadCategories(inputValue)
+                                            }}
+                                            onClear={() => {
+                                                form.setFieldValue(field.name, '')
+                                                loadCategories() // Reload all categories
+                                            }}
                                             isClearable
-                                            loading={isLoading}
+                                            loading={isLoadingCategories}
                                         />
                                     )}
                                 </Field>
@@ -318,9 +388,15 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
                                                     option?.value || '',
                                                 )
                                             }
-                                            onClear={() => form.setFieldValue(field.name, '')}
+                                            onInputChange={(inputValue) => {
+                                                loadVehicles(inputValue)
+                                            }}
+                                            onClear={() => {
+                                                form.setFieldValue(field.name, '')
+                                                loadVehicles() // Reload all vehicles
+                                            }}
                                             isClearable
-                                            loading={isLoading}
+                                            loading={isLoadingVehicles}
                                         />
                                     )}
                                 </Field>
@@ -377,6 +453,7 @@ const BillFilterDrawer: React.FC<BillFilterDrawerProps> = ({
                                             }
                                             onClear={() => form.setFieldValue(field.name, '')}
                                             isClearable
+                                            loading={isLoadingUsers}
                                         />
                                     )}
                                 </Field>
