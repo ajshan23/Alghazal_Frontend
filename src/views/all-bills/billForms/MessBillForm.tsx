@@ -23,8 +23,7 @@ const PaymentMethodOptions = [
     { label: 'ADIB', value: 'adib' },
     { label: 'Cash', value: 'cash' },
     { label: 'MASHREQ CARD', value: 'mashreq_card' },
-    { label: 'CREDIT', value: 'credit' },
-
+    { label: 'ATHEER PLUS', value: 'atheer_plus' },
     // Newly added if missing
     { label: 'ADCB CARD', value: 'adcb_card' },
     { label: 'ADCB BANK', value: 'adcb_bank' },
@@ -36,6 +35,7 @@ const PaymentMethodOptions = [
     { label: 'WIO CARD', value: 'wio_card' },
     { label: 'WIO BANK', value: 'wio_bank' }
 ];
+
 
 type InitialData = {
     billType?: string
