@@ -85,7 +85,12 @@ export const fetchEstimationPdf  = async (id:string) => {
   }
 }
 
-export const downloadEstimationPdf = async (id: string, fileName: string) => {
+export const downloadEstimationPdf = async (
+  id: string, 
+  estimationNumber: string, 
+  projectName: string, 
+  location: string
+): Promise<void> => {
   try {
     const response = await BaseService.get(`/estimation/${id}/estimation-pdf`, {
       responseType: 'arraybuffer',
@@ -104,7 +109,7 @@ export const downloadEstimationPdf = async (id: string, fileName: string) => {
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = fileName || `estimation-${id}.pdf`;
+    link.download = `${estimationNumber} ${projectName} -${location}.pdf`;
     link.style.display = 'none';
     
     document.body.appendChild(link);

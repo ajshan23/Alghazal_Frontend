@@ -22,6 +22,21 @@ import { Notification, toast, Badge, Card, Avatar, Dialog } from '@/components/u
 import { fetchLPODetails, deleteLPO, downloadLpoPdf } from '../api/api';
 import dayjs from 'dayjs';
 import { NumericFormat } from 'react-number-format';
+import DirhamIcon from '@/assets/logo/Dirham-thumb.png';
+
+// Custom component to display currency with Dirham icon
+const CurrencyDisplay = ({ value }: { value: number }) => (
+    <span className="inline-flex items-center gap-1">
+        <img src={DirhamIcon} alt="Dirham" className="w-3.5 h-3.5 inline-block" />
+        <NumericFormat
+            displayType="text"
+            value={value}
+            thousandSeparator={true}
+            decimalScale={2}
+            fixedDecimalScale
+        />
+    </span>
+);
 
 interface ILPOItem {
   description: string;
@@ -319,6 +334,19 @@ const LPODetailView = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Total Amount Display */}
+                      <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center gap-3">
+                          <HiCurrencyDollar className="text-xl text-amber-600 dark:text-amber-400" />
+                          <div>
+                            <p className="font-semibold text-gray-700 dark:text-gray-300">Total Amount</p>
+                            <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                              <CurrencyDisplay value={lpo.totalAmount} />
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -404,22 +432,10 @@ const LPODetailView = () => {
                                 {item.quantity}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <NumericFormat
-                                  displayType="text"
-                                  value={item.unitPrice}
-                                  prefix="$"
-                                  thousandSeparator={true}
-                                  decimalScale={2}
-                                />
+                                <CurrencyDisplay value={item.unitPrice} />
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <NumericFormat
-                                  displayType="text"
-                                  value={item.totalPrice}
-                                  prefix="$"
-                                  thousandSeparator={true}
-                                  decimalScale={2}
-                                />
+                                <CurrencyDisplay value={item.totalPrice} />
                               </td>
                             </tr>
                           ))}
@@ -430,13 +446,7 @@ const LPODetailView = () => {
                               Total Amount:
                             </td>
                             <td className="px-6 py-4 font-bold">
-                              <NumericFormat
-                                displayType="text"
-                                value={lpo.totalAmount}
-                                prefix="$"
-                                thousandSeparator={true}
-                                decimalScale={2}
-                              />
+                              <CurrencyDisplay value={lpo.totalAmount} />
                             </td>
                           </tr>
                         </tfoot>

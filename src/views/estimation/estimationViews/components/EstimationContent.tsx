@@ -12,6 +12,7 @@ import { downloadEstimationPdf, fetchEstimation } from '../../api/api'
 import { APP_PREFIX_PATH } from '@/constants/route.constant'
 import { Notification, toast, Badge, Card, Avatar } from '@/components/ui'
 import { NumericFormat } from 'react-number-format'
+import DirhamIcon from '@/assets/logo/Dirham-thumb.png'
 
 type Estimation = {
     _id: string
@@ -57,7 +58,7 @@ type Estimation = {
     }
     client: {
         clientName: string
-        clientAddress: string 
+        clientAddress: string
         mobileNumber: string
         pincode: string
     }
@@ -65,6 +66,20 @@ type Estimation = {
     createdAt: string
     updatedAt: string
 }
+
+// Custom component to display currency with Dirham icon
+const CurrencyDisplay = ({ value }: { value: number }) => (
+    <span className="inline-flex items-center gap-1">
+        <img src={DirhamIcon} alt="Dirham" className="w-3.5 h-3.5 inline-block" />
+        <NumericFormat
+            displayType="text"
+            value={value}
+            thousandSeparator={true}
+            decimalScale={2}
+            fixedDecimalScale
+        />
+    </span>
+)
 
 const EstimationContent = () => {
     const { textTheme } = useThemeClass()
@@ -108,16 +123,16 @@ const EstimationContent = () => {
     const totalMaterials = data?.materials.reduce((sum, item) => sum + item.total, 0) || 0
     const totalLabour = data?.labour.reduce((sum, item) => sum + item.total, 0) || 0
     const totalTerms = data?.termsAndConditions.reduce((sum, item) => sum + item.total, 0) || 0
-    
+
     // Calculate profit/loss percentage
     const calculateProfitPercentage = () => {
         if (!data) return 0
-        
+
         const estimatedAmount = data.estimatedAmount
         const quotationAmount = data.quotationAmount
-        
+
         if (estimatedAmount === 0) return 0
-        
+
         // Profit percentage = (Profit / Estimated Amount) * 100
         const percentage = (data.profit / quotationAmount) * 100
         return parseFloat(percentage.toFixed(2))
@@ -130,12 +145,17 @@ const EstimationContent = () => {
 
     const handleDownloadPdf = async () => {
         if (!data) return
-        
+
         setPdfLoading(true)
         setError('')
-        
+
         try {
-            await downloadEstimationPdf(data._id, data.estimationNumber)
+            await downloadEstimationPdf(
+                data._id,
+                data.estimationNumber,
+                data.project.projectName,
+                data.client.clientAddress // or whatever field contains the location
+            )
             toast.push(
                 <Notification title="Success" type="success">
                     PDF downloaded successfully
@@ -163,8 +183,8 @@ const EstimationContent = () => {
                             <h3 className="text-xl font-bold mb-2">Error Loading Estimation</h3>
                             <p className="text-gray-600 dark:text-gray-400">{error}</p>
                         </div>
-                        <Button 
-                            className="mt-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700" 
+                        <Button
+                            className="mt-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                             onClick={() => window.location.reload()}
                         >
                             Retry
@@ -266,8 +286,8 @@ const EstimationContent = () => {
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">Estimation Details</p>
                                             </div>
                                         </div>
-                                        <Badge 
-                                            content={isValidUntil ? 'Valid' : 'Expired'} 
+                                        <Badge
+                                            content={isValidUntil ? 'Valid' : 'Expired'}
                                             className="px-3 py-1 text-xs font-bold"
                                             innerClass={`${isValidUntil ? 'bg-emerald-500' : 'bg-red-500'} text-white shadow-lg`}
                                         />
@@ -379,7 +399,7 @@ const EstimationContent = () => {
                                             <th className="px-4 py-3 text-right">Quantity</th>
                                             <th className="px-4 py-3 text-right">Unit Price</th>
                                             <th className="px-4 py-3 text-right">Total</th>
-                                        </tr>   
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         {data.materials.map((item, index) => (
@@ -388,35 +408,17 @@ const EstimationContent = () => {
                                                 <td className="px-4 py-3">{item.uom}</td>
                                                 <td className="px-4 py-3 text-right">{item.quantity}</td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <NumericFormat
-                                                        displayType="text"
-                                                        value={item.unitPrice}
-                                                        prefix="AED "
-                                                        thousandSeparator={true}
-                                                        decimalScale={2}
-                                                    />
+                                                    <CurrencyDisplay value={item.unitPrice} />
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <NumericFormat
-                                                        displayType="text"
-                                                        value={item.total}
-                                                        prefix="AED "
-                                                        thousandSeparator={true}
-                                                        decimalScale={2}
-                                                    />
+                                                    <CurrencyDisplay value={item.total} />
                                                 </td>
                                             </tr>
                                         ))}
                                         <tr className="font-semibold bg-gray-100 dark:bg-gray-600">
                                             <td colSpan={4} className="px-4 py-3 text-right">Total Materials</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NumericFormat
-                                                    displayType="text"
-                                                    value={totalMaterials}
-                                                    prefix="AED "
-                                                    thousandSeparator={true}
-                                                    decimalScale={2}
-                                                />
+                                                <CurrencyDisplay value={totalMaterials} />
                                             </td>
                                         </tr>
                                     </tbody>
@@ -452,35 +454,17 @@ const EstimationContent = () => {
                                                 <td className="px-4 py-3">{item.designation}</td>
                                                 <td className="px-4 py-3 text-right">{item.days}</td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <NumericFormat
-                                                        displayType="text"
-                                                        value={item.price}
-                                                        prefix="AED "
-                                                        thousandSeparator={true}
-                                                        decimalScale={2}
-                                                    />
+                                                    <CurrencyDisplay value={item.price} />
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <NumericFormat
-                                                        displayType="text"
-                                                        value={item.total}
-                                                        prefix="AED "
-                                                        thousandSeparator={true}
-                                                        decimalScale={2}
-                                                    />
+                                                    <CurrencyDisplay value={item.total} />
                                                 </td>
                                             </tr>
                                         ))}
                                         <tr className="font-semibold bg-gray-100 dark:bg-gray-600">
                                             <td colSpan={3} className="px-4 py-3 text-right">Total Labour</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NumericFormat
-                                                    displayType="text"
-                                                    value={totalLabour}
-                                                    prefix="AED "
-                                                    thousandSeparator={true}
-                                                    decimalScale={2}
-                                                />
+                                                <CurrencyDisplay value={totalLabour} />
                                             </td>
                                         </tr>
                                     </tbody>
@@ -516,35 +500,17 @@ const EstimationContent = () => {
                                                 <td className="px-4 py-3">{item.description}</td>
                                                 <td className="px-4 py-3 text-right">{item.quantity}</td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <NumericFormat
-                                                        displayType="text"
-                                                        value={item.unitPrice}
-                                                        prefix="AED "
-                                                        thousandSeparator={true}
-                                                        decimalScale={2}
-                                                    />
+                                                    <CurrencyDisplay value={item.unitPrice} />
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <NumericFormat
-                                                        displayType="text"
-                                                        value={item.total}
-                                                        prefix="AED "
-                                                        thousandSeparator={true}
-                                                        decimalScale={2}
-                                                    />
+                                                    <CurrencyDisplay value={item.total} />
                                                 </td>
                                             </tr>
                                         ))}
                                         <tr className="font-semibold bg-gray-100 dark:bg-gray-600">
                                             <td colSpan={3} className="px-4 py-3 text-right">Total Miscellaneous</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NumericFormat
-                                                    displayType="text"
-                                                    value={totalTerms}
-                                                    prefix="AED "
-                                                    thousandSeparator={true}
-                                                    decimalScale={2}
-                                                />
+                                                <CurrencyDisplay value={totalTerms} />
                                             </td>
                                         </tr>
                                     </tbody>
@@ -570,49 +536,25 @@ const EstimationContent = () => {
                                         <tr className="bg-gray-50 dark:bg-gray-700">
                                             <td className="px-4 py-3 font-semibold">Estimated Amount</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NumericFormat
-                                                    displayType="text"
-                                                    value={data.estimatedAmount}
-                                                    prefix="AED "
-                                                    thousandSeparator={true}
-                                                    decimalScale={2}
-                                                />
+                                                <CurrencyDisplay value={data.estimatedAmount} />
                                             </td>
                                         </tr>
                                         <tr className="bg-white dark:bg-gray-800">
                                             <td className="px-4 py-3 font-semibold">Quotation Amount</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NumericFormat
-                                                    displayType="text"
-                                                    value={data.quotationAmount}
-                                                    prefix="AED "
-                                                    thousandSeparator={true}
-                                                    decimalScale={2}
-                                                />
+                                                <CurrencyDisplay value={data.quotationAmount} />
                                             </td>
                                         </tr>
                                         <tr className="bg-gray-100 dark:bg-gray-600">
                                             <td className="px-4 py-3 font-semibold">Commission Amount</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NumericFormat
-                                                    displayType="text"
-                                                    value={data.commissionAmount}
-                                                    prefix="AED "
-                                                    thousandSeparator={true}
-                                                    decimalScale={2}
-                                                />
+                                                <CurrencyDisplay value={data.commissionAmount} />
                                             </td>
                                         </tr>
                                         <tr className="bg-gray-200 dark:bg-gray-500">
                                             <td className="px-4 py-3 font-semibold">Profit</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NumericFormat
-                                                    displayType="text"
-                                                    value={data.profit}
-                                                    prefix="AED "
-                                                    thousandSeparator={true}
-                                                    decimalScale={2}
-                                                />
+                                                <CurrencyDisplay value={data.profit} />
                                             </td>
                                         </tr>
                                         <tr className={`${isProfit ? 'bg-emerald-100 dark:bg-emerald-900/30' : isLoss ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-300 dark:bg-gray-400'} font-bold`}>
@@ -648,8 +590,8 @@ const EstimationContent = () => {
                                 </div>
 
                                 <div className="flex gap-3">
-                                    <Button 
-                                        variant="solid" 
+                                    <Button
+                                        variant="solid"
                                         loading={pdfLoading}
                                         onClick={handleDownloadPdf}
                                         icon={<HiDownload />}
@@ -657,8 +599,8 @@ const EstimationContent = () => {
                                     >
                                         {pdfLoading ? 'Generating PDF...' : 'Download PDF'}
                                     </Button>
-                                    <Button 
-                                        variant="solid" 
+                                    <Button
+                                        variant="solid"
                                         icon={<HiPencil />}
                                         onClick={handleEdit}
                                         className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"

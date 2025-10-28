@@ -32,11 +32,115 @@ import {
 } from '../../api/api';
 import { Notification, toast, Badge, Card, Avatar } from '@/components/ui';
 import { NumericFormat } from 'react-number-format';
-import ContentTable from './ContentTable';
 import ImageUploadModal from './ImageUploadModal';
 import ImageEditModal from './ImageEditModal';
 import CcEmailModal from './CcEmailModal';
 import { APP_PREFIX_PATH } from '@/constants/route.constant';
+import DirhamIcon from '@/assets/logo/Dirham-thumb.png';
+
+// Custom component to display currency with Dirham icon
+const CurrencyDisplay = ({ value }: { value: number }) => (
+    <span className="inline-flex items-center gap-1">
+        <img src={DirhamIcon} alt="Dirham" className="w-3.5 h-3.5 inline-block" />
+        <NumericFormat
+            displayType="text"
+            value={value}
+            thousandSeparator={true}
+            decimalScale={2}
+            fixedDecimalScale
+        />
+    </span>
+);
+
+// ContentTable component (moved inside the same file)
+const ContentTable = ({ 
+    products, 
+    summary, 
+    vatPercentage 
+}: { 
+    products: any[]; 
+    summary: { subTotal: number; vat: number; netAmount: number };
+    vatPercentage: number;
+}) => {
+    return (
+        <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead>
+                    <tr className="bg-gray-50 dark:bg-gray-700">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            S.No
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Description
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            UOM
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Quantity
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Unit Price
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Total
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {products.map((product) => (
+                        <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                {product.sno}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                {product.description}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                {product.uom}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right">
+                                {product.qty}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right">
+                                <CurrencyDisplay value={product.unitPrice} />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right">
+                                <CurrencyDisplay value={product.total} />
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+                <tfoot className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            Total
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            <CurrencyDisplay value={summary.subTotal} />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            VAT {vatPercentage}%
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            <CurrencyDisplay value={summary.vat} />
+                        </td>
+                    </tr>
+                    <tr className="bg-gray-100 dark:bg-gray-600">
+                        <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white text-right">
+                            Net Amount
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white text-right">
+                            <CurrencyDisplay value={summary.netAmount} />
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    );
+};
 
 const QuotationContent = () => {
     const { textTheme } = useThemeClass();
@@ -425,13 +529,7 @@ const QuotationContent = () => {
                                                     <div>
                                                         <p className="font-semibold text-gray-700 dark:text-gray-300">Net Amount</p>
                                                         <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                                                            <NumericFormat
-                                                                displayType="text"
-                                                                value={data.netAmount}
-                                                                prefix="AED "
-                                                                thousandSeparator={true}
-                                                                decimalScale={2}
-                                                            />
+                                                            <CurrencyDisplay value={data.netAmount} />
                                                         </p>
                                                     </div>
                                                 </div>

@@ -8,7 +8,6 @@ import useThemeClass from '@/utils/hooks/useThemeClass';
 import { useAppSelector } from '@/store';
 import dayjs from 'dayjs';
 import { fetchInvoiceData, downloadInvoicePdf, addGrnNumber, setWorkStartDate, setWorkEndDate, getWorkDuration } from '../../api/api';
-import ContentTable from './ContentTable';
 import GrnModal from './GrnModal';
 import WorkStartModal from './WorkStartModal';
 import WorkEndModal from './WorkEndModal';
@@ -31,11 +30,124 @@ import {
     HiCreditCard
 } from 'react-icons/hi';
 import { NumericFormat } from 'react-number-format';
+import DirhamIcon from '@/assets/logo/Dirham-thumb.png';
+
+// Custom component to display currency with Dirham icon
+const CurrencyDisplay = ({ value }: { value: number }) => (
+    <span className="inline-flex items-center gap-1">
+        <img src={DirhamIcon} alt="Dirham" className="w-3.5 h-3.5 inline-block" />
+        <NumericFormat
+            displayType="text"
+            value={value}
+            thousandSeparator={true}
+            decimalScale={2}
+            fixedDecimalScale
+        />
+    </span>
+);
+
+// ContentTable component
+const ContentTable = ({ 
+    products, 
+    summary 
+}: { 
+    products: Array<{
+        sno: number;
+        description: string;
+        qty: number;
+        unitPrice: number;
+        total: number;
+    }>;
+    summary: {
+        amount: number;
+        vat: number;
+        totalReceivable: number;
+    };
+}) => {
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead>
+                    <tr className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-750">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-16">
+                            S.No
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700">
+                            Description
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-20">
+                            Qty
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-32">
+                            <span className="inline-flex items-center gap-1 justify-end">
+                                Unit Price <img src={DirhamIcon} alt="Dirham" className="w-3.5 h-3.5" />
+                            </span>
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-32">
+                            <span className="inline-flex items-center gap-1 justify-end">
+                                Total <img src={DirhamIcon} alt="Dirham" className="w-3.5 h-3.5" />
+                            </span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {products.map((product) => (
+                        <tr key={product.sno} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                                {product.sno}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                                {product.description}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                                {product.qty}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 text-right">
+                                <CurrencyDisplay value={product.unitPrice} />
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 text-right">
+                                <CurrencyDisplay value={product.total} />
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+                <tfoot className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-750 border-t-2 border-gray-300 dark:border-gray-600">
+                    <tr>
+                        <td colSpan={3} className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right border-r border-gray-200 dark:border-gray-700">
+                            Subtotal:
+                        </td>
+                        <td colSpan={2} className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            <CurrencyDisplay value={summary.amount} />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colSpan={3} className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right border-r border-gray-200 dark:border-gray-700">
+                            VAT (5%):
+                        </td>
+                        <td colSpan={2} className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            <CurrencyDisplay value={summary.vat} />
+                        </td>
+                    </tr>
+                    <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                        <td colSpan={3} className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white text-right border-r border-gray-200 dark:border-gray-700">
+                            Total Receivable:
+                        </td>
+                        <td colSpan={2} className="px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right">
+                            <CurrencyDisplay value={summary.totalReceivable} />
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    );
+};
                                     
 type InvoiceData = {
     _id: string;
     invoiceNumber: string;
     date: string;
+    projectName: string;
+    location: string;
     orderNumber: string;
     vendor: {
         name: string;
@@ -108,7 +220,9 @@ const InvoiceContent = () => {
             }
 
             const response = await fetchInvoiceData(projectId);
-            
+            console.log('====================================');
+            console.log(response);
+            console.log('====================================');
             // Basic validation of required fields
             if (!response || 
                 !response.invoiceNumber || 
@@ -167,7 +281,7 @@ const InvoiceContent = () => {
             const url = window.URL.createObjectURL(new Blob([pdfBlob]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `invoice_${data?.invoiceNumber || projectId}.pdf`);
+            link.setAttribute('download', `${data.invoiceNumber} ${data.projectName} -${data.location}.pdf`);
             document.body.appendChild(link);
             link.click();
             link.parentNode?.removeChild(link);
@@ -434,13 +548,7 @@ const InvoiceContent = () => {
                                                     <div>
                                                         <p className="font-semibold text-gray-700 dark:text-gray-300 print:text-sm">Total Amount</p>
                                                         <p className="text-xl font-bold text-blue-600 dark:text-blue-400 print:text-lg">
-                                                            <NumericFormat
-                                                                displayType="text"
-                                                                value={data.summary.totalReceivable}
-                                                                prefix="AED "
-                                                                thousandSeparator={true}
-                                                                decimalScale={2}
-                                                            />
+                                                            <CurrencyDisplay value={data.summary.totalReceivable} />
                                                         </p>
                                                     </div>
                                                 </div>
