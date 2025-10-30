@@ -186,8 +186,8 @@ const CommissionBillForm = forwardRef<FormikRef, CommissionBillFormProps>((props
                                             <Field name="paymentMethod">
                                                 {({ field, form }: FieldProps) => (
                                                     <Select
-                                                        options={paymentMethodOptions}
-                                                        value={paymentMethodOptions.find(
+                                                        options={PaymentMethodOptions}
+                                                        value={PaymentMethodOptions.find(
                                                             (option) => option.value === field.value
                                                         )}
                                                         onChange={(option) =>
