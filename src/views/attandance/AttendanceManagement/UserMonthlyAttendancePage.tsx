@@ -33,6 +33,7 @@ interface AttendanceRecord {
   _id: string;
   date: Date;
   present: boolean;
+  isPaidLeave?: boolean;
   workingHours: number;
   overtimeHours: number;
   markedBy: {
@@ -262,7 +263,7 @@ const UserMonthlyAttendancePage = () => {
 
     const data = attendance.map(record => ({
       Date: dayjs(record.date).format('DD/MM/YYYY'),
-      Status: record.present ? 'Present' : 'Absent',
+      Status: record.isPaidLeave ? 'Day Off (Paid)' : record.present ? 'Present' : 'Absent',
       Type: record.type === 'project' ? 'Project' : 'Normal',
       Project: record.project?.projectName || 'N/A',
       'Working Hours': record.workingHours || 0,
@@ -329,7 +330,8 @@ const UserMonthlyAttendancePage = () => {
       const isWeekend = currentDate.day() === 0 || currentDate.day() === 6;
 
       const hasAnyPresent = records.some(r => r.present);
-      const hasAnyAbsent = records.some(r => !r.present);
+      const hasAnyAbsent = records.some(r => !r.present && !r.isPaidLeave);
+      const hasAnyDayOff = records.some(r => r.isPaidLeave);
 
       days.push(
         <div 
@@ -344,7 +346,8 @@ const UserMonthlyAttendancePage = () => {
             <span className={`
               inline-flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium
               ${records.length > 0 ? 
-                (hasAnyPresent && !hasAnyAbsent ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 
+                (hasAnyDayOff ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                 hasAnyPresent && !hasAnyAbsent ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 
                  hasAnyAbsent && !hasAnyPresent ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
                  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200') :
                 'text-gray-800 dark:text-gray-200'
@@ -367,20 +370,33 @@ const UserMonthlyAttendancePage = () => {
                     content={record.type === 'project' ? 'P' : 'N'}
                     innerClass={`${record.type === 'project' ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-purple-500 to-purple-600'} text-white shadow-sm`}
                   />
-                  <Badge
-                    content={record.present ? 'P' : 'A'}
-                    innerClass={`${record.present ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'} text-white shadow-sm`}
-                  />
+                  {record.isPaidLeave ? (
+                    <Badge
+                      content="PL"
+                      innerClass="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm"
+                    />
+                  ) : (
+                    <Badge
+                      content={record.present ? 'P' : 'A'}
+                      innerClass={`${record.present ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'} text-white shadow-sm`}
+                    />
+                  )}
                 </div>
                 
-                {record.type === 'project' && record.project && (
+                {record.type === 'project' && record.project && !record.isPaidLeave && (
                   <div className="truncate text-gray-600 dark:text-gray-400 mt-1" 
                        title={record.project.projectName}>
                     {record.project.projectName}
                   </div>
                 )}
                 
-                {record.workingHours > 0 && (
+                {record.isPaidLeave && (
+                  <div className="text-blue-600 dark:text-blue-400 text-xs mt-1">
+                    Paid Leave
+                  </div>
+                )}
+                
+                {record.workingHours > 0 && !record.isPaidLeave && (
                   <div className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
                     <HiOutlineClock className="text-xs" />
                     {record.workingHours}h
@@ -693,6 +709,10 @@ const UserMonthlyAttendancePage = () => {
                 <div className="flex items-center gap-2">
                   <Badge content="A" innerClass="bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm" />
                   <span className="text-gray-700 dark:text-gray-300">Absent</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge content="PL" innerClass="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm" />
+                  <span className="text-gray-700 dark:text-gray-300">Paid Leave</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-sm shadow-sm">

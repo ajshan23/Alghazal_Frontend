@@ -10,11 +10,13 @@ export const apiMarkAttendance = (data: {
     userId: string
     present: boolean
     hour?: number
+    isPaidLeave?: boolean
 }) => {
     return BaseService.post(`/attendance/project/${data.projectId}/user/${data.userId}`, {
         present: data.present,
-        workingHours: data.hour || 0, // FIXED: Changed from workingHour to workingHours
-        type: 'project'
+        workingHours: data.hour || 0,
+        type: 'project',
+        isPaidLeave: data.isPaidLeave || false
     })
 }
 
@@ -29,15 +31,17 @@ export const apiMarkNormalAttendance = (data: {
     date?: Date
     type?: 'normal'
     hour?: number
+    isPaidLeave?: boolean
 }) => {
     return BaseService.post(`/attendance/normal/${data.userId}`, {
         present: data.present,
-        workingHours: data.hour || 0, // FIXED: Changed from workingHour to workingHours
-        type: 'normal'
+        workingHours: data.hour || 0,
+        type: 'normal',
+        isPaidLeave: data.isPaidLeave || false
     })
 }
 
-// FIXED: Get user's monthly attendance with proper API endpoint
+// Get user's monthly attendance
 export const apiGetUserMonthlyAttendance = (
     userId: string,
     month: number,
@@ -49,7 +53,6 @@ export const apiGetUserMonthlyAttendance = (
     })
 }
 
-// Keep the old function for backward compatibility but use the new endpoint
 export const apiGetNormalMonthlyAttendance = (
     userId: string,
     month: number,
@@ -124,16 +127,30 @@ export const fetchProjectAnalytics = async (
   return response.data.data;
 };
 
-export const apiCreateOrUpdateAttendance = (data) => {
+// Attendance Management APIs
+export const apiCreateOrUpdateAttendance = (data: {
+    userId: string;
+    date: string;
+    present: boolean;
+    isPaidLeave?: boolean;
+    workingHours?: number;
+    type: 'project' | 'normal';
+    projectId?: string;
+}) => {
   return BaseService.post('/attendance-management/create-update', data);
 }
 
-// Delete attendance
-export const apiDeleteAttendanceRecord = (attendanceId) => {
+export const apiDeleteAttendanceRecord = (attendanceId: string) => {
   return BaseService.delete(`/attendance-management/delete/${attendanceId}`);
 }
 
-// Get user's projects for dropdown
-export const apiGetUserProjects = (userId) => {
+export const apiGetUserProjects = (userId: string) => {
   return BaseService.get(`/attendance-management/user/${userId}/projects`);
+}
+
+// Get user's date-specific attendance
+export const apiGetUserDateAttendance = (userId: string, date: string) => {
+  return BaseService.get(`/attendance-management/user/${userId}/date`, {
+    params: { date }
+  });
 }

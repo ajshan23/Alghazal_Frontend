@@ -1,4 +1,4 @@
-// components/EditAttendanceModal.tsx - SIMPLIFIED WITHOUT EXTRA TIME BOXES
+// components/EditAttendanceModal.tsx - WITH DAY OFF STATUS
 import { useState, useEffect } from 'react';
 import { 
   Dialog, 
@@ -7,9 +7,9 @@ import {
   Select, 
   Notification,
   toast,
-  Avatar
+  Badge
 } from '@/components/ui';
-import { HiCheck, HiX, HiClock, HiUser, HiTrash, HiOfficeBuilding } from 'react-icons/hi';
+import { HiCheck, HiX, HiClock, HiUser, HiTrash, HiOfficeBuilding, HiCalendar } from 'react-icons/hi';
 import { apiCreateOrUpdateAttendance, apiDeleteAttendanceRecord, apiGetUserProjects } from '../../api/api';
 
 interface EditAttendanceModalProps {
@@ -48,7 +48,7 @@ const EditAttendanceModal = ({
   const [projectsLoading, setProjectsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    present: true,
+    status: 'present' as 'present' | 'absent' | 'dayoff',
     workingHours: '8',
     type: 'normal',
     projectId: ''
@@ -58,9 +58,16 @@ const EditAttendanceModal = ({
   useEffect(() => {
     if (isOpen) {
       if (record && !isNewRecord) {
-        // For existing record
+        // Determine status from record
+        let status: 'present' | 'absent' | 'dayoff' = 'present';
+        if (record.isPaidLeave) {
+          status = 'dayoff';
+        } else if (!record.present) {
+          status = 'absent';
+        }
+
         setFormData({
-          present: record.present || false,
+          status,
           workingHours: record.workingHours?.toString() || '0',
           type: record.type || 'normal',
           projectId: record.project?._id || ''
@@ -68,7 +75,7 @@ const EditAttendanceModal = ({
       } else {
         // For new record - default values
         setFormData({
-          present: true,
+          status: 'present',
           workingHours: '8',
           type: 'normal',
           projectId: ''
@@ -80,7 +87,8 @@ const EditAttendanceModal = ({
   // Fetch user's projects when modal opens and type is project
   useEffect(() => {
     const fetchUserProjects = async () => {
-      if (!user?._id || formData.type !== 'project') {
+      // Don't fetch projects if type is not project OR status is day off
+      if (!user?._id || formData.type !== 'project' || formData.status === 'dayoff') {
         setProjects([]);
         return;
       }
@@ -91,7 +99,6 @@ const EditAttendanceModal = ({
         if (response.data) {
           setProjects(response.data.data || []);
           
-          // If no projects found and type is project, show warning
           if (response.data.data.length === 0) {
             toast.push(
               <Notification title="Info" type="warning">
@@ -113,12 +120,19 @@ const EditAttendanceModal = ({
       }
     };
 
-    if (isOpen && formData.type === 'project') {
+    if (isOpen && formData.type === 'project' && formData.status !== 'dayoff') {
       fetchUserProjects();
     } else {
       setProjects([]);
     }
-  }, [isOpen, formData.type, user?._id]);
+  }, [isOpen, formData.type, formData.status, user?._id]);
+
+  // Reset project when status changes to day off
+  useEffect(() => {
+    if (formData.status === 'dayoff') {
+      setFormData(prev => ({ ...prev, projectId: '', type: 'normal' }));
+    }
+  }, [formData.status]);
 
   const handleSave = async () => {
     if (!user) {
@@ -130,8 +144,8 @@ const EditAttendanceModal = ({
       return;
     }
 
-    // Validate project selection for project type
-    if (formData.type === 'project' && !formData.projectId) {
+    // Validate project selection for project type (unless day off)
+    if (formData.type === 'project' && formData.status !== 'dayoff' && !formData.projectId) {
       toast.push(
         <Notification title="Error" type="danger">
           Please select a project for project attendance
@@ -140,9 +154,19 @@ const EditAttendanceModal = ({
       return;
     }
 
-    // Validate working hours
+    // Day off cannot have project
+    if (formData.status === 'dayoff' && formData.projectId) {
+      toast.push(
+        <Notification title="Error" type="danger">
+          Day off cannot be associated with a project
+        </Notification>
+      );
+      return;
+    }
+
+    // Validate working hours for present status
     const workingHoursValue = parseFloat(formData.workingHours);
-    if (formData.present && (isNaN(workingHoursValue) || workingHoursValue < 0 || workingHoursValue > 24)) {
+    if (formData.status === 'present' && (isNaN(workingHoursValue) || workingHoursValue < 0 || workingHoursValue > 24)) {
       toast.push(
         <Notification title="Error" type="danger">
           Working hours must be between 0 and 24
@@ -157,10 +181,11 @@ const EditAttendanceModal = ({
       const attendanceData = {
         userId: user._id,
         date: record?.date ? new Date(record.date).toISOString() : new Date().toISOString(),
-        present: formData.present,
-        workingHours: formData.present ? parseFloat(formData.workingHours) || 0 : 0,
-        type: formData.type,
-        projectId: formData.type === 'project' ? formData.projectId : undefined
+        present: formData.status === 'present',
+        isPaidLeave: formData.status === 'dayoff',
+        workingHours: formData.status === 'present' ? parseFloat(formData.workingHours) || 0 : 0,
+        type: formData.status === 'dayoff' ? 'normal' : formData.type, // Force normal for day off
+        projectId: (formData.type === 'project' && formData.status !== 'dayoff') ? formData.projectId : undefined
       };
 
       console.log('Saving attendance data:', attendanceData);
@@ -215,10 +240,7 @@ const EditAttendanceModal = ({
   };
 
   const handleWorkingHoursChange = (value: string) => {
-    // Allow only numbers and decimal point
     const numericValue = value.replace(/[^0-9.]/g, '');
-    
-    // Ensure only one decimal point
     const parts = numericValue.split('.');
     const formattedValue = parts.length > 2 
       ? parts[0] + '.' + parts.slice(1).join('')
@@ -231,11 +253,10 @@ const EditAttendanceModal = ({
   };
 
   const handleStatusChange = (value: string) => {
-    const isPresent = value === 'present';
     setFormData(prev => ({
       ...prev,
-      present: isPresent,
-      workingHours: isPresent ? prev.workingHours : '0'
+      status: value as 'present' | 'absent' | 'dayoff',
+      workingHours: value === 'present' ? prev.workingHours : '0'
     }));
   };
 
@@ -243,11 +264,10 @@ const EditAttendanceModal = ({
     setFormData(prev => ({
       ...prev,
       type: value,
-      projectId: '' // Reset project when type changes
+      projectId: ''
     }));
   };
 
-  // If the Select component isn't working, let's use native select as fallback
   const renderSelect = (value: string, onChange: (value: string) => void, options: { value: string; label: string }[], placeholder?: string) => {
     return (
       <select
@@ -319,22 +339,24 @@ const EditAttendanceModal = ({
           </p>
         </div>
 
-        {/* Status and Type in Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Status
-            </label>
-            {renderSelect(
-              formData.present ? 'present' : 'absent',
-              handleStatusChange,
-              [
-                { value: 'present', label: 'Present' },
-                { value: 'absent', label: 'Absent' }
-              ]
-            )}
-          </div>
+        {/* Status Selection - NOW WITH 3 OPTIONS */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Attendance Status
+          </label>
+          {renderSelect(
+            formData.status,
+            handleStatusChange,
+            [
+              { value: 'present', label: '✓ Present' },
+              { value: 'absent', label: '✗ Absent (Unpaid)' },
+              { value: 'dayoff', label: '⭐ Day Off (Paid Leave)' }
+            ]
+          )}
+        </div>
 
+        {/* Type Selection - Only show if NOT day off */}
+        {formData.status !== 'dayoff' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Attendance Type
@@ -348,10 +370,33 @@ const EditAttendanceModal = ({
               ]
             )}
           </div>
-        </div>
+        )}
 
-        {/* Project Selection - Only show for project type */}
-        {formData.type === 'project' && (
+        {/* Day Off Info Banner */}
+        {formData.status === 'dayoff' && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start gap-2">
+              <HiCalendar className="text-blue-600 dark:text-blue-400 text-xl mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                  Paid Leave / Day Off
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  • This is a company-paid leave
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  • Cannot be assigned to any project
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  • Working hours will be set to 0
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Project Selection - Only show for project type AND not day off */}
+        {formData.type === 'project' && formData.status !== 'dayoff' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <HiOfficeBuilding className="inline mr-1" />
@@ -385,7 +430,7 @@ const EditAttendanceModal = ({
         )}
 
         {/* Working Hours - Only show if present */}
-        {formData.present && (
+        {formData.status === 'present' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <HiClock className="inline mr-1" />
@@ -405,17 +450,17 @@ const EditAttendanceModal = ({
         )}
 
         {/* Show message when absent */}
-        {!formData.present && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+        {formData.status === 'absent' && (
+          <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+            <p className="text-sm text-red-700 dark:text-red-300">
               <HiX className="inline mr-1" />
-              User is marked as absent. Working hours will be set to 0.
+              User is marked as absent (unpaid). Working hours will be set to 0.
             </p>
           </div>
         )}
 
         {/* Existing Project Info */}
-        {record?.project && (
+        {record?.project && formData.status !== 'dayoff' && (
           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
             <p className="text-sm text-blue-700 dark:text-blue-300">
               Project: <strong>{record.project.projectName}</strong>
@@ -437,6 +482,9 @@ const EditAttendanceModal = ({
                 Created: {new Date(record.createdAt).toLocaleDateString()}
               </p>
             )}
+            {record.isPaidLeave && (
+              <Badge className="mt-2" content="Paid Leave" innerClass="bg-blue-500 text-white" />
+            )}
           </div>
         )}
       </div>
@@ -456,7 +504,7 @@ const EditAttendanceModal = ({
           icon={<HiCheck />}
           loading={loading}
           onClick={handleSave}
-          disabled={formData.type === 'project' && !formData.projectId}
+          disabled={formData.type === 'project' && formData.status !== 'dayoff' && !formData.projectId}
         >
           {isNewRecord ? 'Create' : 'Save Changes'}
         </Button>

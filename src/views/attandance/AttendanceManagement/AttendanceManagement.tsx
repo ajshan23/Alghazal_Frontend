@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button, Card, Avatar, Badge, Notification, toast } from '@/components/ui'
-import { HiCheck, HiX, HiOutlineRefresh } from 'react-icons/hi'
+import { HiCheck, HiX, HiOutlineRefresh, HiCalendar } from 'react-icons/hi'
 import { apiGetTodayProjectAttendance, apiMarkAttendance } from '../api/api'
 import useThemeClass from '@/utils/hooks/useThemeClass'
 import dayjs from 'dayjs'
@@ -17,6 +17,7 @@ interface Worker {
   profileImage?: string
   mobileNumber?: string
   present: boolean
+  isPaidLeave?: boolean
   markedBy?: {
     _id: string
     firstName: string
@@ -46,7 +47,7 @@ const AttendanceManagement = () => {
   const [date, setDate] = useState(dayjs().format('DD MMM YYYY'))
   const [attendanceModal, setAttendanceModal] = useState(false)
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
-  const [modalType, setModalType] = useState<'present' | 'absent'>('present')
+  const [modalType, setModalType] = useState<'present' | 'absent' | 'dayoff'>('present')
 
   const fetchAttendanceData = async () => {
     try {
@@ -70,24 +71,25 @@ const AttendanceManagement = () => {
     fetchAttendanceData()
   }, [projectId])
 
-  const handleMarkAttendance = async (workerId: string, present: boolean, hour?: number) => {
+  const handleMarkAttendance = async (workerId: string, present: boolean, hour?: number, isPaidLeave?: boolean) => {
     try {
       setSubmitting(true)
       await apiMarkAttendance({
         projectId,
         userId: workerId,
         present,
-        hour: present ? hour : 0 // Set hour to 0 when marking absent
+        hour: present ? hour : 0,
+        isPaidLeave: isPaidLeave || false
       })
       
-      // Update local state
       setWorkers(prev => prev.map(worker => 
         worker._id === workerId 
           ? { 
               ...worker, 
               present,
+              isPaidLeave: isPaidLeave || false,
               markedBy: {
-                _id: 'current-user', // You might want to replace with actual user data
+                _id: 'current-user',
                 firstName: 'You',
                 lastName: ''
               },
@@ -112,48 +114,7 @@ const AttendanceManagement = () => {
     }
   }
 
-  // const handleMarkAll = async (present: boolean) => {
-  //   try {
-  //     setSubmitting(true)
-  //     await Promise.all(
-  //       workers.map(worker => 
-  //         apiMarkAttendance({
-  //           projectId,
-  //           userId: worker._id,
-  //           present
-  //         })
-  //       )
-  //     )
-      
-  //     // Update all workers
-  //     setWorkers(prev => prev.map(worker => ({
-  //       ...worker,
-  //       present,
-  //       markedBy: {
-  //         _id: 'current-user',
-  //         firstName: 'You',
-  //         lastName: ''
-  //       },
-  //       markedAt: new Date()
-  //     })))
-      
-  //     toast.push(
-  //       <Notification title="Success" type="success">
-  //         All workers marked as {present ? 'present' : 'absent'}
-  //       </Notification>
-  //     )
-  //   } catch (error) {
-  //     toast.push(
-  //       <Notification title="Error marking attendance" type="danger">
-  //         {error.message}
-  //       </Notification>
-  //     )
-  //   } finally {
-  //     setSubmitting(false)
-  //   }
-  // }
-
-  const openModal = (workerId: string, type: 'present' | 'absent') => {
+  const openModal = (workerId: string, type: 'present' | 'absent' | 'dayoff') => {
     setSelectedWorker(workerId)
     setModalType(type)
     setAttendanceModal(true)
@@ -164,9 +125,13 @@ const AttendanceManagement = () => {
     setAttendanceModal(false)
   }
 
-  const handleModalConfirm = (e: MouseEvent, selectedHour?: number) => {
+  const handleModalConfirm = (e: MouseEvent, selectedHour?: number, isPaidLeave?: boolean) => {
     if (selectedWorker) {
-      handleMarkAttendance(selectedWorker, modalType === 'present', selectedHour)
+      if (modalType === 'dayoff') {
+        handleMarkAttendance(selectedWorker, false, 0, true)
+      } else {
+        handleMarkAttendance(selectedWorker, modalType === 'present', selectedHour, false)
+      }
       closeModal(e)
     }
   }
@@ -199,14 +164,6 @@ const AttendanceManagement = () => {
               >
                 Refresh
               </Button>
-              {/* <Button
-                size="sm"
-                variant="solid"
-                onClick={() => handleMarkAll(true)}
-                disabled={submitting}
-              >
-                Mark All Present
-              </Button> */}
             </div>
           </div>
         }
@@ -252,14 +209,21 @@ const AttendanceManagement = () => {
                       {worker.mobileNumber || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge
-                        content={worker.present ? 'Present' : 'Absent'}
-                        innerClass={`${
-                          worker.present
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-red-500 text-white'
-                        }`}
-                      />
+                      {worker.isPaidLeave ? (
+                        <Badge
+                          content="Day Off (Paid)"
+                          innerClass="bg-blue-500 text-white"
+                        />
+                      ) : (
+                        <Badge
+                          content={worker.present ? 'Present' : 'Absent'}
+                          innerClass={`${
+                            worker.present
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-red-500 text-white'
+                          }`}
+                        />
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
@@ -269,17 +233,27 @@ const AttendanceManagement = () => {
                           color="green"
                           icon={<HiCheck />}
                           onClick={() => openModal(worker._id, 'present')}
-                          disabled={submitting || worker.present}
+                          disabled={submitting || (worker.present && !worker.isPaidLeave)}
                         >
                           Present
                         </Button>
                         <Button
                           size="xs"
                           variant="solid"
+                          color="blue"
+                          icon={<HiCalendar />}
+                          onClick={() => openModal(worker._id, 'dayoff')}
+                          disabled={submitting || (worker.isPaidLeave === true)}
+                        >
+                          Day Off
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="solid"
                           color="red"
                           icon={<HiX />}
-                          onClick={() => handleMarkAttendance(worker._id, false)}
-                          disabled={submitting || !worker.present}
+                          onClick={() => handleMarkAttendance(worker._id, false, 0, false)}
+                          disabled={submitting || (!worker.present && !worker.isPaidLeave)}
                         >
                           Absent
                         </Button>
@@ -289,7 +263,7 @@ const AttendanceManagement = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     No workers assigned to this project
                   </td>
                 </tr>

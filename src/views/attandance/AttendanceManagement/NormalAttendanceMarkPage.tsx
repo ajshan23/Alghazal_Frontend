@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Card, Avatar, Badge, Notification, toast } from '@/components/ui';
-import { HiCheck, HiX, HiOutlineRefresh } from 'react-icons/hi';
+import { HiCheck, HiX, HiOutlineRefresh, HiCalendar } from 'react-icons/hi';
 import { apiMarkNormalAttendance, apiGetDailyNormalAttendance } from '../api/api';
 import useThemeClass from '@/utils/hooks/useThemeClass';
 import dayjs from 'dayjs';
@@ -19,6 +19,8 @@ interface UserAttendance {
     role: string;
   };
   present: boolean;
+  isPaidLeave?: boolean;
+  workingHours?: number;
   markedBy?: {
     _id: string;
     firstName: string;
@@ -35,7 +37,7 @@ const NormalAttendancePage = () => {
   const [date, setDate] = useState(dayjs().format('DD MMM YYYY'));
   const [attendanceModal, setAttendanceModal] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
-  const [modalType, setModalType] = useState<'present' | 'absent'>('present');
+  const [modalType, setModalType] = useState<'present' | 'absent' | 'dayoff'>('present');
 
   const fetchAttendanceData = async () => {
     try {
@@ -62,22 +64,23 @@ const NormalAttendancePage = () => {
     fetchAttendanceData();
   }, []);
 
-  const handleMarkAttendance = async (userId: string, present: boolean, hour?: number) => {
+  const handleMarkAttendance = async (userId: string, present: boolean, hour?: number, isPaidLeave?: boolean) => {
     try {
       setSubmitting(true);
       await apiMarkNormalAttendance({
         userId,
         present,
-        hour: present ? hour : 0 // FIX: Set hour to 0 when marking absent
+        hour: present ? hour : 0,
+        isPaidLeave: isPaidLeave || false
       });
       
-      // Update local state
       setAttendanceData(prev => prev.map(item => 
         item.user._id === userId 
           ? { 
               ...item, 
               present,
-              workingHours: present ? hour : 0, // FIX: Update working hours
+              isPaidLeave: isPaidLeave || false,
+              workingHours: present ? hour : 0,
               markedBy: {
                 _id: 'current-user',
                 firstName: 'You',
@@ -104,8 +107,8 @@ const NormalAttendancePage = () => {
     }
   };
 
-  const openModal = (workerId: string, type: 'present' | 'absent') => {
-    setSelectedWorker(workerId);
+  const openModal = (userId: string, type: 'present' | 'absent' | 'dayoff') => {
+    setSelectedWorker(userId);
     setModalType(type);
     setAttendanceModal(true);
   };
@@ -115,9 +118,13 @@ const NormalAttendancePage = () => {
     setAttendanceModal(false);
   };
 
-  const handleModalConfirm = (e: MouseEvent, selectedHour?: number) => {
+  const handleModalConfirm = (e: MouseEvent, selectedHour?: number, isPaidLeave?: boolean) => {
     if (selectedWorker) {
-      handleMarkAttendance(selectedWorker, modalType === 'present', selectedHour);
+      if (modalType === 'dayoff') {
+        handleMarkAttendance(selectedWorker, false, 0, true);
+      } else {
+        handleMarkAttendance(selectedWorker, modalType === 'present', selectedHour, false);
+      }
       closeModal(e);
     }
   };
@@ -201,14 +208,21 @@ const NormalAttendancePage = () => {
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge
-                        content={item.present ? 'Present' : 'Absent'}
-                        innerClass={`${
-                          item.present
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-red-500 text-white'
-                        }`}
-                      />
+                      {item.isPaidLeave ? (
+                        <Badge
+                          content="Day Off (Paid)"
+                          innerClass="bg-blue-500 text-white"
+                        />
+                      ) : (
+                        <Badge
+                          content={item.present ? 'Present' : 'Absent'}
+                          innerClass={`${
+                            item.present
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-red-500 text-white'
+                          }`}
+                        />
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
@@ -218,17 +232,27 @@ const NormalAttendancePage = () => {
                           color="green"
                           icon={<HiCheck />}
                           onClick={() => openModal(item.user._id, 'present')}                          
-                          disabled={submitting || item.present}
+                          disabled={submitting || (item.present && !item.isPaidLeave)}
                         >
                           Present
                         </Button>
                         <Button
                           size="xs"
                           variant="solid"
+                          color="blue"
+                          icon={<HiCalendar />}
+                          onClick={() => openModal(item.user._id, 'dayoff')}
+                          disabled={submitting || (item.isPaidLeave === true)}
+                        >
+                          Day Off
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="solid"
                           color="red"
                           icon={<HiX />}
-                          onClick={() => handleMarkAttendance(item.user._id, false)} // FIX: Directly mark absent
-                          disabled={submitting || !item.present}
+                          onClick={() => handleMarkAttendance(item.user._id, false, 0, false)}
+                          disabled={submitting || (!item.present && !item.isPaidLeave)}
                         >
                           Absent
                         </Button>
